@@ -366,13 +366,15 @@ internal sealed class OutputWindow : Window
         _evaluationContext.BackgroundColor = _backgroundColor;
 
         const string overrideSampleVariableName = "OverrideMotionBlurSamples";
+        
         if (RenderWindow.IsToollRenderingSomething)
         {
-            var samples = RenderWindow.OverrideMotionBlurSamples;
-            if (samples >= 0)
-            {
-                _evaluationContext.IntVariables[overrideSampleVariableName] = samples;
-            }
+            // FIXME: Implement
+            // var samples = RenderWindow.OverrideMotionBlurSamples;
+            // if (samples >= 0)
+            // {
+            //     _evaluationContext.IntVariables[overrideSampleVariableName] = samples;
+            // }
         }
         else
         {

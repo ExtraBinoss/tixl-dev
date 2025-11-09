@@ -1,6 +1,3 @@
-﻿namespace T3.Editor.Gui.Windows.RenderExport;
+﻿#nullable enable
+namespace T3.Editor.Gui.Windows.RenderExport;
 
-public class RenderTypes
-{
-    
-}
