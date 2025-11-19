@@ -1,7 +1,7 @@
 namespace Skills.T001_Welcome;
 
 [Guid("123a1ff1-2935-4d9a-880f-897a7f8885ad")]
-internal sealed class TestSkill : Instance<TestSkill>
+internal sealed class L04_ConnectingValues : Instance<L04_ConnectingValues>
 {
     [Output(Guid = "23bc598c-e87d-4993-9e09-b4676e302e61")]
     public readonly Slot<Texture2D> ColorBuffer = new();

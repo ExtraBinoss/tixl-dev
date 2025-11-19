@@ -232,6 +232,11 @@ internal static class EditTourPointsDialog
 
             if (_editedTourPointId == tourPoint.Id)
             {
+                if (_shouldFocusInput)
+                {
+                    ImGui.SetKeyboardFocusHere();
+                    _shouldFocusInput = false;
+                }
                 if (ImGui.InputTextMultiline("##Text", ref tourPoint.Title, 16384, new Vector2(-10, 60) * T3Ui.UiScaleFactor))
                 {
                     modified = true;
@@ -250,6 +255,7 @@ internal static class EditTourPointsDialog
                 if (ImGui.IsItemClicked())
                 {
                     _editedTourPointId = tourPoint.Id;
+                    _shouldFocusInput = true;
                 }
             }
 
@@ -281,6 +287,7 @@ internal static class EditTourPointsDialog
 
     private static bool CanAdd => _selectedChildIds.Count == 1;
 
+    private static bool _shouldFocusInput;
     private static bool _isDragging;
     private static readonly List<int> _listOrderWhileDragging = [];
     private static bool _completedDragging;

@@ -1,6 +1,7 @@
 {
-  "Id": "4f9eb54f-1b81-4a6b-a842-f80c423e5843"/*TestSkill_Welcome01*/,
+  "Id": "4f9eb54f-1b81-4a6b-a842-f80c423e5843"/*L06_TBD*/,
   "Description": "",
+  "SymbolTags": "16",
   "InputUis": [],
   "SymbolChildUis": [
     {
@@ -20,8 +21,8 @@
     {
       "ChildId": "c560820f-fc83-4026-8966-65ab12e90d4b"/*RoundedRect*/,
       "Position": {
-        "X": 1291.7074,
-        "Y": 1950.3478
+        "X": 1291.7075,
+        "Y": 1921.6766
       }
     }
   ],
@@ -52,6 +53,24 @@
         "X": 196.44336,
         "Y": 97.1333
       }
+    }
+  ],
+  "TourPoints": [
+    {
+      "Id": "2d74cde3-b4c4-419d-9368-78160d2bbd6a",
+      "ChildId": "c560820f-fc83-4026-8966-65ab12e90d4b",
+      "Title": "Try to select this operator."
+    },
+    {
+      "Id": "c89bd80c-cb95-424d-8800-000bf3096a95",
+      "ChildId": "c560820f-fc83-4026-8966-65ab12e90d4b",
+      "Title": "Check it's parameters. Do you see something special?",
+      "Style": "TourPoint"
+    },
+    {
+      "Id": "6494514d-e694-425b-b076-c3d49dd9d175",
+      "ChildId": "eab2c996-0b38-44d0-9040-8ea42f13e4be",
+      "Title": "Yeah another op!"
     }
   ]
 }

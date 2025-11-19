@@ -57,8 +57,13 @@ internal static class TourInteraction
 
             // Draw tip
             ImGui.SameLine(0, 4);
-            ImGui.SetNextItemWidth(300 * T3Ui.UiScaleFactor);
-            ImGui.TextWrapped(point.Title);
+            //ImGui.SetNextItemWidth(100 * T3Ui.UiScaleFactor);
+            //ImGui.TextWrapped(point.Title);
+            
+            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 300 * T3Ui.UiScaleFactor);
+            //ImGui.TextUnformatted(point.Title);
+            TextParagraphs(point.Title);
+            ImGui.PopTextWrapPos();
 
             // Draw progress
             var tourPointsCount = compositionUi.TourPoints.Count;
@@ -80,16 +85,17 @@ internal static class TourInteraction
             // Draw graph indicator...
             if (compositionUi.ChildUis.TryGetValue(point.ChildId, out var child))
             {
-                var posOnScreen = projectView.GraphView.Canvas.TransformPosition(child.PosOnCanvas);
                 if (_lastCompositionId != compositionUi.Symbol.Id)
                 {
                     _lastCompositionId = compositionUi.Symbol.Id;
-                    _dampedCanvasPos = posOnScreen;
+                    _dampedCanvasPos = child.PosOnCanvas;
                 }
                 else
                 {
-                    _dampedCanvasPos = Vector2.Lerp(_dampedCanvasPos, posOnScreen, 0.1f);
+                    _dampedCanvasPos = Vector2.Lerp(_dampedCanvasPos, child.PosOnCanvas, 0.1f);
                 }
+                
+                var posOnScreen = projectView.GraphView.Canvas.TransformPosition(_dampedCanvasPos);
 
                 var fadeCount = 4;
                 var t = ImGui.GetTime();
@@ -102,7 +108,7 @@ internal static class TourInteraction
                     var xx = (float)((t * 0.1f + fadeIndex / (float)fadeCount) % 1);
                     xx = MathF.Pow(1 - xx, 2.5f);
                     
-                    dl.AddCircleFilled(_dampedCanvasPos, (1 - xx) * dotRadius, UiColors.StatusActivated.Fade(0.2f * xx));
+                    dl.AddCircleFilled(posOnScreen, (1 - xx) * dotRadius, UiColors.StatusActivated.Fade(0.3f * xx));
                 }
             }
 
@@ -119,6 +125,38 @@ internal static class TourInteraction
         }
     }
 
+    
+    private static void TextParagraphs(ReadOnlySpan<char> text, float paragraphSpacing = 6f)
+    {
+        int start = 0;
+
+        ImGui.BeginGroup();
+        for (int i = 0; i < text.Length; i++)
+        {
+            //ImGui.Dummy(new Vector2(1,1));
+            // Look for "\n\n"
+            if (i + 1 < text.Length && text[i] == '\n' )
+            {
+                var paragraph = text.Slice(start, i - start);
+                ImGui.TextUnformatted(paragraph);
+
+                // Add paragraph spacing
+                ImGui.Dummy(new Vector2(0, paragraphSpacing));
+
+                //i += 1; // skip second \n
+                start = i + 1;
+            }
+        }
+
+        // Last paragraph
+        if (start < text.Length)
+        {
+            var paragraph = text.Slice(start);
+            ImGui.TextUnformatted(paragraph);
+        }
+        ImGui.EndGroup();
+    }
+    
     private static Vector2 _dampedCanvasPos;
     private static Guid _lastCompositionId;
     private static double _lastClickTime;

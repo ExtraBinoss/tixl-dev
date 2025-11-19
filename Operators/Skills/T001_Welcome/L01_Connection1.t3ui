@@ -1,0 +1,65 @@
+{
+  "Id": "c0065a1d-091a-4fc4-ad36-4430b90d29d4"/*L01_Connection1*/,
+  "Description": "",
+  "SymbolTags": "16",
+  "InputUis": [],
+  "SymbolChildUis": [
+    {
+      "ChildId": "08c5f3b7-76ad-4e6d-8536-493c3952510c"/*ImageResult*/,
+      "Position": {
+        "X": 1663.0128,
+        "Y": 1991.6981
+      }
+    },
+    {
+      "ChildId": "346a5eef-0135-4d15-9841-1a82bba84fc7"/*RoundedRect*/,
+      "Position": {
+        "X": 1291.7075,
+        "Y": 1938.3384
+      }
+    },
+    {
+      "ChildId": "db2c4eab-f92a-4d5d-a465-dbe30c438daf"/*RoundedRect*/,
+      "Position": {
+        "X": 1291.7074,
+        "Y": 2096.5342
+      }
+    }
+  ],
+  "OutputUis": [
+    {
+      "OutputId": "38ba6678-687d-4c6d-821a-ecf2cdea75c5"/*ColorBuffer*/,
+      "Position": {
+        "X": 1663.0128,
+        "Y": 2061.6982
+      }
+    }
+  ],
+  "TourPoints": [
+    {
+      "Id": "7e6bc27a-5dd8-4df5-a5b7-84ae7d15d279",
+      "ChildId": "346a5eef-0135-4d15-9841-1a82bba84fc7",
+      "Title": "Welcome to this interactive intro to TiXL.\nIn the next minutes I will walk you through the basics of using the TiXL's node graph.\n"
+    },
+    {
+      "Id": "b6cf7de1-62cc-48a3-baba-f5bdce562017",
+      "ChildId": "346a5eef-0135-4d15-9841-1a82bba84fc7",
+      "Title": "The Skill Quest is a series of Levels  that start simple but can get very complex later on..."
+    },
+    {
+      "Id": "157dd9da-719a-424a-bac1-434ae320d8c3",
+      "ChildId": "346a5eef-0135-4d15-9841-1a82bba84fc7",
+      "Title": "Each \"Level\"  shows its solution on the bottom.\nYour task is to replicate that solution by using the available operators.\n"
+    },
+    {
+      "Id": "6566d948-3ee6-4a80-827d-ad3f414d53db",
+      "ChildId": "346a5eef-0135-4d15-9841-1a82bba84fc7",
+      "Title": "Tip: If you get stuck, you can always open at the solution."
+    },
+    {
+      "Id": "7cf2cc9a-cc99-4be4-b209-735cb12e62dc",
+      "ChildId": "346a5eef-0135-4d15-9841-1a82bba84fc7",
+      "Title": "Let's start by learning how to connect operators:\nDrag the ouput-knob of the [RoundedRect] onto the [ImageResult]."
+    }
+  ]
+}

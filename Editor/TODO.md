@@ -64,10 +64,10 @@
 - [x] Create TiXL learning project
 - [x] Create PlayResult-Op
 - [ ] Implement some kind of back-channel so PlayResult-Op can send events to the editor
-- [ ] Tour-Points (Should probably be orthogonal from SkillQuest)
-  - [ ] extend model
+- [x] Tour-Points (Should probably be orthogonal from SkillQuest)
+  - [x] extend model
   - [ ] add user-settings for "Skip tours"
-  - [ ] show tour indicator near the op name and description.
+  - [x] show tour indicator near the op name and description.
   - [ ] save tour-progress for SymbolId in user settings (maybe with -1 as completed or canceled)
   - [ ] Implement tour mode with popup / continue / back, etc. 
 - Add some kind of dropdown mode to switch between gradient presets.
