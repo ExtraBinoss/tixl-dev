@@ -21,7 +21,9 @@ internal static class SkillMapPopup
     }
 
     private static QuestZone? _activeZone;
-    private static QuestTopic? _activeTopic;
+
+    //private static QuestTopic? _activeTopic;
+    private static readonly HashSet<QuestTopic> _selectedTopics = new();
 
     internal static void Draw()
     {
@@ -40,7 +42,7 @@ internal static class SkillMapPopup
                     if (ImGui.Selectable($"{zone.Title}", zone == _activeZone))
                     {
                         _activeZone = zone;
-                        _activeTopic = null;
+                        _selectedTopics.Clear();
                     }
 
                     ImGui.Indent(10);
@@ -49,9 +51,11 @@ internal static class SkillMapPopup
                     {
                         var t = zone.Topics[index];
                         ImGui.PushID(index);
-                        if (ImGui.Selectable($"{t.Title}", t == _activeTopic))
+
+                        if (ImGui.Selectable($"{t.Title}", _selectedTopics.Contains(t)))
                         {
-                            _activeTopic = t;
+                            _selectedTopics.Clear();
+                            _selectedTopics.Add(t);
                         }
 
                         ImGui.PopID();
@@ -103,8 +107,10 @@ internal static class SkillMapPopup
 
     private static void DrawSidebar()
     {
-        if (_activeTopic == null)
+        if (_selectedTopics.Count != 1)
             return;
+
+        var topic = _selectedTopics.First();
 
         if (ImGui.IsKeyDown(ImGuiKey.A) && !ImGui.IsAnyItemActive())
         {
@@ -127,11 +133,11 @@ internal static class SkillMapPopup
         }
 
         FormInputs.DrawFieldSetHeader("Topic");
-        ImGui.PushID(_activeTopic.Id.GetHashCode());
-        FormInputs.AddStringInput("##Topic", ref _activeTopic.Title, autoFocus: autoFocus);
+        ImGui.PushID(topic.Id.GetHashCode());
+        FormInputs.AddStringInput("##Topic", ref topic.Title, autoFocus: autoFocus);
         FormInputs.AddVerticalSpace();
 
-        if (FormInputs.AddDropdown<Type>(ref _activeTopic.Type,
+        if (FormInputs.AddDropdown<Type>(ref topic.Type,
                 [
                     typeof(Texture2D),
                     typeof(float),
@@ -144,11 +150,11 @@ internal static class SkillMapPopup
         }
 
         FormInputs.DrawFieldSetHeader("Namespace");
-        FormInputs.AddStringInput("##NameSpace", ref _activeTopic.Namespace);
+        FormInputs.AddStringInput("##NameSpace", ref topic.Namespace);
 
         FormInputs.DrawFieldSetHeader("Description");
-        _activeTopic.Description ??= string.Empty;
-        CustomComponents.DrawMultilineTextEdit(ref _activeTopic.Description);
+        topic.Description ??= string.Empty;
+        CustomComponents.DrawMultilineTextEdit(ref topic.Description);
 
         ImGui.PopID();
     }
@@ -177,6 +183,8 @@ internal static class SkillMapPopup
         var hoverCenter = _canvas.ScreenPosFromCell(cell);
         dl.AddNgonRotated(hoverCenter, _canvas.HexRadiusOnScreen, Color.Orange, false);
 
+        var activeTopic = _selectedTopics.Count == 0 ? null : _selectedTopics.First();
+
         if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
         {
             var newTopic = new QuestTopic
@@ -184,40 +192,41 @@ internal static class SkillMapPopup
                                    Id = Guid.NewGuid(),
                                    MapCoordinate = new Vector2(cell.X, cell.Y),
                                    Title = "New topic" + SkillMap.AllTopics.Count(),
-                                   ZoneId = _activeTopic?.ZoneId ?? Guid.Empty,
+                                   ZoneId = activeTopic?.ZoneId ?? Guid.Empty,
                                    Type = _lastType,
-                                   Status = _activeTopic?.Status ?? QuestTopic.Statuses.Locked,
-                                   Requirement = _activeTopic?.Requirement ?? QuestTopic.Requirements.AllInputPaths,
+                                   Status = activeTopic?.Status ?? QuestTopic.Statuses.Locked,
+                                   Requirement = activeTopic?.Requirement ?? QuestTopic.Requirements.AllInputPaths,
                                };
 
             var relevantZone = GetActiveZone();
             relevantZone.Topics.Add(newTopic);
             newTopic.ZoneId = relevantZone.Id;
-            _activeTopic = newTopic;
+            _selectedTopics.Clear();
+            _selectedTopics.Add(newTopic);
             _focusTopicNameInput = true;
         }
         else if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
         {
-            _activeTopic = null;
+            _selectedTopics.Clear();
         }
     }
 
     /// <returns>
-    /// true if under mouse
+    /// return true if hovered
     /// </returns>
     private static bool DrawTopicCell(ImDrawListPtr dl, QuestTopic topic, HexCanvas.Cell cellUnderMouse)
     {
         var cell = new HexCanvas.Cell(topic.MapCoordinate);
-        var isMouseInside = cell == cellUnderMouse;
-        var isCellHovered = ImGui.IsWindowHovered() && !ImGui.IsMouseDown(ImGuiMouseButton.Right) && isMouseInside;
+        
+        var isHovered = ImGui.IsWindowHovered() && !ImGui.IsMouseDown(ImGuiMouseButton.Right) && cell == cellUnderMouse;
 
         var posOnScreen = _canvas.MapCoordsToScreenPos(topic.MapCoordinate);
         var radius = _canvas.HexRadiusOnScreen;
 
         var typeColor = TypeUiRegistry.GetTypeOrDefaultColor(topic.Type);
-        dl.AddNgonRotated(posOnScreen, radius * 0.95f, typeColor.Fade(isMouseInside ? 0.3f : 0.15f));
+        dl.AddNgonRotated(posOnScreen, radius * 0.95f, typeColor.Fade(isHovered ? 0.3f : 0.15f));
 
-        var isSelected = _activeTopic == topic;
+        var isSelected = _selectedTopics.Contains(topic);
         if (isSelected)
         {
             dl.AddNgonRotated(posOnScreen, radius, UiColors.StatusActivated, false);
@@ -264,61 +273,69 @@ internal static class SkillMapPopup
             }
         }
 
-        if (isCellHovered)
+        if (!isHovered)
+            return isHovered;
+
+        // Mouse interactions ----------------
+        
+        ImGui.BeginTooltip();
+        ImGui.TextUnformatted(topic.Title);
+        if (!string.IsNullOrEmpty(topic.Description))
         {
-            ImGui.BeginTooltip();
-            ImGui.TextUnformatted(topic.Title);
-            if (!string.IsNullOrEmpty(topic.Description))
-            {
-                CustomComponents.StylizedText(topic.Description, Fonts.FontSmall, UiColors.TextMuted);
-            }
+            CustomComponents.StylizedText(topic.Description, Fonts.FontSmall, UiColors.TextMuted);
+        }
 
-            ImGui.EndTooltip();
+        ImGui.EndTooltip();
 
-            if (!ImGui.IsMouseDown(ImGuiMouseButton.Left)) 
-                return isMouseInside;
-            
-            
-            switch (_state)
-            {
-                case States.Default:
-                    _activeTopic = topic;
-                    _lastType = topic.Type;
-                    break;
-                case States.LinkingItems when _activeTopic == null:
+        if (!ImGui.IsMouseDown(ImGuiMouseButton.Left))
+            return isHovered;
+
+        switch (_state)
+        {
+            case States.Default:
+                _selectedTopics.Clear();
+                _selectedTopics.Add(topic);
+                _lastType = topic.Type;
+                if(ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                    Log.Debug("Dragging?!");
+                break;
+
+            case States.LinkingItems:
+                if (_selectedTopics.Count != 1 || isSelected)
+                {
                     _state = States.Default;
                     break;
-                case States.LinkingItems when _activeTopic == topic || !ImGui.IsMouseClicked(ImGuiMouseButton.Left):
-                    return isMouseInside;
-                case States.LinkingItems:
+                }
+                
+                if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                 {
-                    if (!_activeTopic.UnlocksTopics.Remove(topic.Id))
+                    var activeTopic = _selectedTopics.First();
+                    if (!activeTopic.UnlocksTopics.Remove(topic.Id))
                     {
-                        _activeTopic.UnlocksTopics.Add(topic.Id);
+                        activeTopic.UnlocksTopics.Add(topic.Id);
                     }
 
                     if (!ImGui.GetIO().KeyShift)
                     {
                         _state = States.Default;
                     }
-
-                    break;
                 }
-            }
+
+                break;
         }
 
-        return isMouseInside;
+        return isHovered;
     }
-    
+
     private static QuestZone GetActiveZone()
     {
         if (_activeZone != null)
             return _activeZone;
 
-        if (_activeTopic == null)
+        if (_selectedTopics.Count==0)
             return SkillMap.FallbackZone;
 
-        return SkillMap.TryGetZone(_activeTopic.Id, out var zone)
+        return SkillMap.TryGetZone(_selectedTopics.First().Id, out var zone)
                    ? zone
                    : SkillMap.FallbackZone;
     }
@@ -326,6 +343,5 @@ internal static class SkillMapPopup
     private static bool _focusTopicNameInput;
     private static Type _lastType = typeof(float);
     private static States _state;
-
     private static readonly HexCanvas _canvas = new();
 }
