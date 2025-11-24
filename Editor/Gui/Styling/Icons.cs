@@ -259,6 +259,9 @@ internal static class Icons
             new(Icon.Stack, slotIndex: 127),
             new(Icon.Exit, slotIndex: 128),
             new(Icon.Star, slotIndex: 129),
+            new(Icon.Locked, slotIndex: 130),
+            new(Icon.Unlocked, slotIndex: 131),
+            new(Icon.Usb, slotIndex: 132),
         };
 
     public static readonly string IconAtlasPath = Path.Combine(SharedResources.Directory, @"images\editor\t3-icons.png");
@@ -403,4 +406,7 @@ public enum Icon
     OpenExternally,
     Exit,
     Star,
+    Locked,
+    Unlocked,
+    Usb,
 }

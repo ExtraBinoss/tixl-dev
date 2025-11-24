@@ -1,6 +1,7 @@
 ﻿#nullable enable
 
 using ImGuiNET;
+using SharpDX.Direct2D1.Effects;
 using T3.Core.DataTypes;
 using T3.Core.DataTypes.Vector;
 using T3.Core.Utils;
@@ -138,6 +139,11 @@ internal static class SkillMapPopup
         if (_activeTopic == null)
             return;
 
+        if (ImGui.IsKeyDown(ImGuiKey.A) && !ImGui.IsAnyItemActive())
+        {
+            State = States.SelectingUnlocked;
+        }
+
         var isSelectingUnlocked = State == States.SelectingUnlocked;
 
         if (CustomComponents.ToggleIconButton(ref isSelectingUnlocked, Icon.ConnectedOutput, Vector2.Zero))
@@ -166,6 +172,7 @@ internal static class SkillMapPopup
                     typeof(Command),
                     typeof(string),
                     typeof(BufferWithViews),
+                    typeof(ShaderGraphNode),
                 ], "##Type", x => x.Name))
         {
         }
@@ -226,7 +233,7 @@ internal static class SkillMapPopup
                                        MapCoordinate = new Vector2(x, y),
                                        Title = "New topic" + SkillMap.AllTopics.Count(),
                                        ZoneId = _activeTopic?.ZoneId ?? Guid.Empty,
-                                       Type = _activeTopic?.Type ?? typeof(Texture2D),
+                                       Type = _lastType ?? typeof(Texture2D),
                                        Status = _activeTopic?.Status ?? QuestTopic.Statuses.Locked,
                                        Requirement = _activeTopic?.Requirement ?? QuestTopic.Requirements.AllInputPaths,
                                    };
@@ -275,13 +282,15 @@ internal static class SkillMapPopup
                 var delta =  posOnScreen - targetPos;
                 var direction = Vector2.Normalize(delta);
                 var angle = -MathF.Atan2(delta.X, delta.Y) -MathF.PI/2;
+                var fadeLine = (delta.Length() / _canvas.Scale.X).RemapAndClamp(0f, 1000f, 1, 0.06f);
+                
                 dl.AddLine(posOnScreen - direction * radius, 
                            targetPos + direction * radius*0.9f, 
-                           typeColor, 
+                           typeColor.Fade(fadeLine), 
                            2);
                 dl.AddNgonRotated(targetPos + direction * radius*0.9f, 
                                   10 * _canvas.Scale.X, 
-                                  typeColor, 
+                                  typeColor.Fade(fadeLine), 
                                   true, 
                                   3, 
                                   startAngle:angle );
@@ -290,17 +299,25 @@ internal static class SkillMapPopup
 
         if (!string.IsNullOrEmpty(topic.Title))
         {
-            var labelAlpha = _canvas.Scale.X.RemapAndClamp(0.3f, 2f, 0, 1);
+            var labelAlpha = _canvas.Scale.X.RemapAndClamp(0.3f, 0.8f, 0, 1);
             if (labelAlpha > 0.01f)
             {
+                ImGui.PushFont(_canvas.Scale.X < 0.6f ? Fonts.FontSmall: Fonts.FontNormal);
                 AddWrappedCenteredText(dl, topic.Title, posOnScreen, 13, UiColors.ForegroundFull.Fade(labelAlpha));
+                ImGui.PopFont();
+                
+                if (topic.Status == QuestTopic.Statuses.Locked)
+                {
+                    Icons.DrawIconAtScreenPosition(Icon.Locked, (posOnScreen + new Vector2(-Icons.FontSize/2,25f* _canvas.Scale.Y)).Floor(), 
+                                                   dl, 
+                                                   UiColors.ForegroundFull.Fade(0.4f* labelAlpha));
+                }
             }
+            
+            
         }
 
-        if (topic.Status == QuestTopic.Statuses.Locked)
-        {
-            Icons.DrawIconAtScreenPosition(Icon.RotateClockwise, posOnScreen);
-        }
+
 
         if (isCellHovered)
         {
@@ -317,6 +334,7 @@ internal static class SkillMapPopup
                 if (State == States.Default)
                 {
                     _activeTopic = topic;
+                    _lastType = topic.Type;
                     _draggedTopicId = topic.Id;
                 }
                 else if (State == States.SelectingUnlocked)
@@ -336,6 +354,11 @@ internal static class SkillMapPopup
                             else
                             {
                                 _activeTopic.UnlocksTopics.Add(topic.Id);
+                            }
+
+                            if (!ImGui.GetIO().KeyShift)
+                            {
+                                State = States.Default;
                             }
                         }
                     }
@@ -374,15 +397,16 @@ internal static class SkillMapPopup
 
     private static bool _focusTopicNameInput;
     private static readonly Dictionary<int, QuestTopic> _gridTopics = new();
-
+    private static Type _lastType = typeof(float);
+    
     private static void DrawContent()
     {
         var dl = ImGui.GetWindowDrawList();
 
         var rOnScreen = _canvas.TransformDirection(Vector2.One).X;
-        for (int x = -15; x < 15; x++)
+        for (int x = -15; x < 25; x++)
         {
-            for (int y = -15; y < 15; y++)
+            for (int y = -25; y < 25; y++)
             {
                 DrawItem(dl, rOnScreen, x, y);
             }
