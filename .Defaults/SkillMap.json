@@ -22,7 +22,6 @@
       ],
       "Namespace": "Skills.T001_Welcome",
       "TopicType": "Image",
-      "Status": "None",
       "Requirement": "None"
     },
     {
@@ -37,7 +36,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -52,7 +50,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -67,7 +64,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -82,7 +78,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -99,7 +94,6 @@
       ],
       "Namespace": null,
       "TopicType": "String",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -116,7 +110,6 @@
       ],
       "Namespace": null,
       "TopicType": "String",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -131,7 +124,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -151,9 +143,8 @@
         "f15f35fe-a482-45b2-a909-4e88f529e71e",
         "71d6f1eb-7b02-4635-b840-45082fb9b102"
       ],
-      "Namespace": null,
+      "Namespace": "Skills.Math.M01.BasicMath",
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -172,7 +163,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -189,7 +179,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -204,7 +193,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -222,7 +210,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -242,7 +229,6 @@
       ],
       "Namespace": "Skills.T002_BasicShapes",
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -260,7 +246,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -277,7 +262,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -292,7 +276,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -310,7 +293,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -325,7 +307,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -343,7 +324,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -362,7 +342,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -377,7 +356,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -392,7 +370,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -409,7 +386,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -424,7 +400,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -441,7 +416,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -459,7 +433,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -476,7 +449,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -491,7 +463,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "String",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -511,7 +482,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -530,7 +500,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -545,7 +514,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -560,7 +528,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -577,7 +544,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -592,7 +558,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -610,7 +575,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -625,7 +589,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -640,7 +603,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -655,7 +617,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -670,7 +631,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -688,7 +648,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -709,7 +668,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -728,7 +686,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -743,7 +700,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -758,7 +714,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -778,7 +733,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -795,7 +749,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -810,7 +763,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -825,7 +777,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -843,7 +794,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -858,7 +808,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -873,7 +822,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "ShaderGraph",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -890,7 +838,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -907,7 +854,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -925,7 +871,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -940,7 +885,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -957,7 +901,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -974,7 +917,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -991,7 +933,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1012,7 +953,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1027,7 +967,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1045,7 +984,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1062,7 +1000,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1077,7 +1014,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1096,7 +1032,6 @@
       ],
       "Namespace": null,
       "TopicType": "ShaderGraph",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1113,7 +1048,6 @@
       ],
       "Namespace": null,
       "TopicType": "ShaderGraph",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1131,7 +1065,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1146,7 +1079,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1161,7 +1093,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "ShaderGraph",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1178,7 +1109,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1195,7 +1125,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1212,7 +1141,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1229,7 +1157,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1246,7 +1173,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1263,7 +1189,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1278,7 +1203,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1295,7 +1219,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1310,7 +1233,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1327,7 +1249,6 @@
       ],
       "Namespace": null,
       "TopicType": "ShaderGraph",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1344,7 +1265,6 @@
       ],
       "Namespace": null,
       "TopicType": "ShaderGraph",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1359,7 +1279,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "ShaderGraph",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1374,7 +1293,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1391,7 +1309,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1408,7 +1325,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1423,7 +1339,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1438,7 +1353,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1453,7 +1367,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1468,7 +1381,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1485,7 +1397,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1502,7 +1413,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1519,7 +1429,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1536,7 +1445,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1551,7 +1459,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1568,7 +1475,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1583,7 +1489,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1598,7 +1503,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "String",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1613,7 +1517,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1628,7 +1531,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1643,7 +1545,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1658,7 +1559,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1673,7 +1573,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1688,7 +1587,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1705,7 +1603,6 @@
       ],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1720,7 +1617,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Numbers",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1737,7 +1633,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1752,7 +1647,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1767,7 +1661,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1782,7 +1675,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1800,7 +1692,6 @@
       ],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1815,7 +1706,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1832,7 +1722,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1847,7 +1736,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1864,7 +1752,6 @@
       ],
       "Namespace": null,
       "TopicType": "Gpu",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1882,7 +1769,6 @@
       ],
       "Namespace": null,
       "TopicType": "Image",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1897,7 +1783,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "ShaderGraph",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1912,7 +1797,6 @@
       "UnlocksTopics": [],
       "Namespace": null,
       "TopicType": "Command",
-      "Status": "Locked",
       "Requirement": "AllInputPaths"
     },
     {
@@ -1929,7 +1813,20 @@
       ],
       "Namespace": "Skills.T002_BasicShapes",
       "TopicType": "Image",
-      "Status": "None",
+      "Requirement": "None"
+    },
+    {
+      "Id": "1bbfc1bc-ea24-40f8-8f6f-1b9ff3be5c3f",
+      "Title": "BasicMath",
+      "Description": "",
+      "MapCoordinate": {
+        "X": 0.0,
+        "Y": 0.0
+      },
+      "ZoneId": "717505b4-0c6e-4708-85d8-54e202f9bbdf",
+      "UnlocksTopics": [],
+      "Namespace": "Skills.Math.M01.BasicMath",
+      "TopicType": "Image",
       "Requirement": "None"
     }
   ]

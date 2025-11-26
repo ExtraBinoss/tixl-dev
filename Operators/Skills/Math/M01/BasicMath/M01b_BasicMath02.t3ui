@@ -1,14 +1,27 @@
 {
   "Id": "2a128e01-c2b2-4ef8-8af5-01b698c9c2db"/*M01b_BasicMath02*/,
-  "Description": "",
+  "Description": "So much time...",
   "InputUis": [],
   "SymbolChildUis": [
     {
-      "ChildId": "5dc08c84-646d-430f-b24b-1949834759a8"/*Multiply*/,
-      "AnnotationId": "2f87abd2-2372-4260-8c30-0368b426a9ca",
+      "ChildId": "17eb7487-9b33-4239-aafd-5b8a3b3085c2"/*Weeks*/,
       "Position": {
-        "X": 1203.35,
-        "Y": 2183.051
+        "X": 1090.8175,
+        "Y": 1788.3484
+      }
+    },
+    {
+      "ChildId": "58f60eca-b21b-4f16-89c8-9ba4e4e6ca8d"/*Weeks*/,
+      "Position": {
+        "X": 1098.0209,
+        "Y": 2231.8228
+      }
+    },
+    {
+      "ChildId": "6ce44690-d702-4e83-bcef-28d783676bba"/*Days Per Week*/,
+      "Position": {
+        "X": 1090.8175,
+        "Y": 1734.5225
       }
     },
     {
@@ -19,42 +32,52 @@
       }
     },
     {
-      "ChildId": "7fb42eef-0789-470f-b63e-ed1750b50e4b"/*Value*/,
+      "ChildId": "7fb42eef-0789-470f-b63e-ed1750b50e4b"/*Hours Per Day*/,
       "Position": {
-        "X": 1163.4437,
-        "Y": 1898.3619
+        "X": 1092.1251,
+        "Y": 1666.9069
       }
     },
     {
-      "ChildId": "8af6d38d-adbf-4b19-9938-5f4114e6260c"/*Time*/,
-      "AnnotationId": "2f87abd2-2372-4260-8c30-0368b426a9ca",
+      "ChildId": "b3209a3b-6176-46be-9a5e-477aaedb088e"/*Multiply*/,
       "Position": {
-        "X": 1063.3497,
-        "Y": 2183.051
+        "X": 1092.1251,
+        "Y": 1894.8025
       }
     },
     {
-      "ChildId": "940de623-b8b8-4a2a-94e2-a906a9297d29"/*Layer2d*/,
-      "AnnotationId": "2f87abd2-2372-4260-8c30-0368b426a9ca",
+      "ChildId": "b45b89e7-0b20-43f4-92c7-8c41fba57257"/*Hours Per Day*/,
       "Position": {
-        "X": 1089.7831,
-        "Y": 2160.586
+        "X": 1098.0209,
+        "Y": 2126.8228
       }
     },
     {
-      "ChildId": "c306c907-62cf-4aa5-8238-0dbf6ba04026"/*RoundedRect*/,
-      "AnnotationId": "2f87abd2-2372-4260-8c30-0368b426a9ca",
+      "ChildId": "d2def649-2838-4aef-b077-ac1837fdbb03"/*Multiply*/,
       "Position": {
-        "X": 1343.35,
-        "Y": 2148.051
+        "X": 1090.8175,
+        "Y": 1961.456
       }
     },
     {
-      "ChildId": "e185f7f1-9ede-459f-b83a-bcaf8b8916b1"/*Value*/,
-      "AnnotationId": "2f87abd2-2372-4260-8c30-0368b426a9ca",
+      "ChildId": "e0200cd2-07c9-42e5-b334-2585193dc913"/*Multiply*/,
       "Position": {
-        "X": 1139.7532,
-        "Y": 2110.1172
+        "X": 1238.0209,
+        "Y": 2196.8228
+      }
+    },
+    {
+      "ChildId": "e789ba55-b205-4151-a21b-7392cf4a372e"/*Multiply*/,
+      "Position": {
+        "X": 1238.0209,
+        "Y": 2126.8228
+      }
+    },
+    {
+      "ChildId": "f6e0fdf3-12d7-4921-a351-fd4bdc5c073f"/*Days Per Week*/,
+      "Position": {
+        "X": 1098.0209,
+        "Y": 2161.8228
       }
     }
   ],
@@ -82,36 +105,31 @@
         "Y": 2065.0
       },
       "Size": {
-        "X": 468.55768,
-        "Y": 181.79468
+        "X": 392.33228,
+        "Y": 245.0
       }
     }
   ],
   "TourPoints": [
     {
-      "Id": "d71f85f8-3ddb-42b8-afd6-ce95bf84e18d",
-      "ChildId": "00000000-0000-0000-0000-000000000000",
-      "Title": "If you're like me, you might have terrible memories about math. Maybe it was your teachers, the distracting crush on the table nearby. Or it was the all to prominent question \n\"What do it need that for?!\"\nIn TiXL working with Math can be fun and intuitive. This section of the Skill Quest will bring back everything you need to know..."
+      "Id": "ecf54e4e-d71a-4261-b1cd-8fd72ae8909a",
+      "ChildId": "17eb7487-9b33-4239-aafd-5b8a3b3085c2",
+      "Title": "Sometimes dealing with numbers is hard. Why not let TiXL do that work for us?"
     },
     {
-      "Id": "5d37f466-cec8-454f-b0d7-7d8d2fe42fe0",
-      "ChildId": "00000000-0000-0000-0000-000000000000",
-      "Title": "In TiXL you  can use math-operators to control parameters and animation.\nThere are different type of numbers. We will start with float-values and cover other types later."
+      "Id": "b1c8874f-6751-4def-ad03-7d9e3df7f70e",
+      "ChildId": "17eb7487-9b33-4239-aafd-5b8a3b3085c2",
+      "Title": "We renamed these  [Value] operators by hitting the Return-key..."
     },
     {
-      "Id": "e8b09b8a-fe92-4a6d-bbeb-4de10df12a5c",
-      "ChildId": "00000000-0000-0000-0000-000000000000",
-      "Title": "The most basic Operator is [Value].\nBecause it's quite important, you can edit it's parameters with different methods:\n1. Selecting the op and adjusting using the parameter window.\n2. Holding the CTRL key and dragging the op.\n"
+      "Id": "8111160f-5061-4995-857c-3fc31f37d484",
+      "ChildId": "17eb7487-9b33-4239-aafd-5b8a3b3085c2",
+      "Title": "You can zoom in to see the giving value..."
     },
     {
-      "Id": "f20b91ac-c687-4c89-be63-69526934271c",
-      "ChildId": "00000000-0000-0000-0000-000000000000",
-      "Title": "Connect this op to the [ValueQuiz]."
-    },
-    {
-      "Id": "d997f040-3d11-4e17-99f5-5503ebdd8a50",
-      "ChildId": "00000000-0000-0000-0000-000000000000",
-      "Title": "The [ValueQuiz] show a value and a graph at the bottom.\nTry to find the value, the to solve that goal..."
+      "Id": "6af48546-4d4b-47ac-9d7e-cfb2ff68859b",
+      "ChildId": "b3209a3b-6176-46be-9a5e-477aaedb088e",
+      "Title": "Try to multiply all tree values...\n\nThe connect the second input remember to drag the output connectors onto the [Multiply] operatoprs and look for the blinking dot. "
     }
   ]
 }

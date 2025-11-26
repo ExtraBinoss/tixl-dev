@@ -27,6 +27,7 @@ internal static class EditTourPointsPopup
         if (!_isOpen)
             return ChangeSymbol.SymbolModificationResults.Nothing;
 
+        ImGui.SetNextWindowSize(new Vector2(500, 500) * T3Ui.UiScaleFactor, ImGuiCond.Once);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 1);
         if (ImGui.Begin("Edit tour points", ref _isOpen))
         {

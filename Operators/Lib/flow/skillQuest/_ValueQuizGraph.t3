@@ -108,7 +108,7 @@
         {
           "Id": "d7dcbc7a-146d-42f0-84b1-a7d42f662487"/*ClampMinExtend*/,
           "Type": "System.Single",
-          "Value": 0.1
+          "Value": 0.39
         }
       ],
       "Outputs": []
@@ -271,7 +271,13 @@
     {
       "Id": "a821e4e2-426a-4247-803a-736676f4c180"/*FloatToString*/,
       "SymbolId": "39c96cfd-dedf-4f76-a471-d1c26c9ba9fa",
-      "InputValues": [],
+      "InputValues": [
+        {
+          "Id": "b2b32c44-62d8-4acb-a9a7-4856ec7a33bb"/*Format*/,
+          "Type": "System.String",
+          "Value": "{0:0.00}"
+        }
+      ],
       "Outputs": []
     },
     {

@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using T3.Core.DataTypes.Vector;
+using T3.Core.Utils;
 using T3.Editor.Gui.Input;
 using T3.Editor.Gui.Styling;
 using T3.Editor.Skills;
@@ -64,10 +65,15 @@ internal static class TourInteraction
 
             // Draw tip
             ImGui.SameLine(0, 4);
-            
-            ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 350 * T3Ui.UiScaleFactor);
-            TextParagraphs(point.Title);
-            ImGui.PopTextWrapPos();
+
+            if (!string.IsNullOrEmpty(point.Title))
+            {
+                ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + 350 * T3Ui.UiScaleFactor);
+                var typeWriterProgress = (timeSinceInteraction * 2f).Clamp(0, 1);
+                var shortedText = StringUtils.SliceToProgress(point.Title, typeWriterProgress);
+                TextParagraphs(shortedText);
+                ImGui.PopTextWrapPos();
+            }
 
             // Draw progress
             var tourPointsCount = compositionUi.TourPoints.Count;
