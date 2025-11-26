@@ -10,7 +10,7 @@ internal static class CustomImguiDraw
     private static readonly int[] _wrapLineIndices = new int[10];
 
     // The method now accepts a Span of ReadOnlySpans for the wrapped lines to avoid allocations
-    public static void AddWrappedCenteredText(ImDrawListPtr dl, string text, Vector2 position, int wrapCharCount, Color color)
+    public static void AddWrappedCenteredText(ImDrawListPtr dl, string text, Vector2 position, int wrapCharCount, Color color, float verticalAlign = 0.5f)
     {
         var textLength = text.Length;
         var currentLineStart = 0;
@@ -48,7 +48,7 @@ internal static class CustomImguiDraw
         // Step 2: Draw wrapped text centered horizontally and vertically
         var lineHeight = ImGui.GetTextLineHeight();
         var totalHeight = lineHeight * lineCount;
-        var yStart = position.Y - totalHeight / 2.0f; // Center vertically
+        var yStart = position.Y - totalHeight * verticalAlign; // Center vertically
 
         for (var i = 0; i < lineCount; i++)
         {

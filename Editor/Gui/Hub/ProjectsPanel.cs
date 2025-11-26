@@ -5,6 +5,7 @@ using T3.Core.SystemUi;
 using T3.Editor.Gui.Window;
 using T3.Editor.Gui.Input;
 using T3.Editor.Gui.Styling;
+using T3.Editor.Gui.UiHelpers;
 using T3.Editor.UiModel;
 using T3.Editor.UiModel.ProjectHandling;
 
@@ -14,7 +15,9 @@ internal static class ProjectsPanel
 {
     public static void Draw(GraphWindow window)
     {
-        ContentPanel.Begin("Projects", null, DrawProjectTools, -SkillQuestPanel.Height -10);
+        var heightForSkillQuest = UserSettings.Config.ShowSkillQuestInHub ? SkillQuestPanel.Height + 10 : 0;
+        
+        ContentPanel.Begin("Projects", null, DrawProjectTools, -heightForSkillQuest);
 
         FormInputs.AddVerticalSpace(20);
 

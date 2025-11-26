@@ -111,6 +111,8 @@ public sealed class UserSettings : Settings<UserSettings.ConfigData>
 
         public bool EditorHoverPreview = true;
 
+        public bool ShowSkillQuestInHub = true;
+
         // Asset Lib
         public bool SyncWithOperatorSelection = true;
         public bool ScrollAssetLibToActive = true;

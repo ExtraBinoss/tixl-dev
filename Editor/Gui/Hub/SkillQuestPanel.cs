@@ -16,6 +16,9 @@ internal static class SkillQuestPanel
 {
     internal static void Draw(GraphWindow window, bool projectViewJustClosed)
     {
+        if (!UserSettings.Config.ShowSkillQuestInHub)
+            return;
+        
         if (!SkillTraining.TryGetActiveTopicAndLevel(out var activeTopic, out var activeLevel))
         {
             ImGui.TextUnformatted("no skill quest data");
@@ -63,6 +66,7 @@ internal static class SkillQuestPanel
             {
                 ImGui.BeginChild("Content", new Vector2(-10, -30), false);
                 {
+                    ImGui.Indent(10);
                     ImGui.PushFont(Fonts.FontSmall);
                     ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
                     ImGui.TextUnformatted(activeTopic.Title);
@@ -70,6 +74,7 @@ internal static class SkillQuestPanel
                     ImGui.PopFont();
 
                     ImGui.Text(activeLevel.Title);
+                    ImGui.Unindent();
                 }
                 ImGui.EndChild();
 
@@ -80,12 +85,6 @@ internal static class SkillQuestPanel
                     if (ImGui.Button("Start"))
                     {
                         SkillTraining.StartPlayModeFromHub(window);
-                    }
-
-                    ImGui.SameLine(0, 10);
-                    if (ImGui.Button("Reset progress"))
-                    {
-                        SkillTraining.ResetProgress();
                     }
                 }
                 ImGui.EndChild();

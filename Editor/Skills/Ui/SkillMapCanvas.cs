@@ -125,7 +125,12 @@ internal sealed class SkillMapCanvas : HexCanvas
             if (labelAlpha > 0.01f)
             {
                 ImGui.PushFont(Scale.X < 0.6f ? Fonts.FontSmall : Fonts.FontNormal);
-                CustomImguiDraw.AddWrappedCenteredText(dl, topic.Title, posOnScreen, 13, UiColors.ForegroundFull.Fade(labelAlpha));
+                CustomImguiDraw.AddWrappedCenteredText(dl, 
+                                                       topic.Title, 
+                                                       posOnScreen - new Vector2(0, 10f * Scale.Y), 
+                                                       12, 
+                                                       UiColors.ForegroundFull.Fade(labelAlpha),
+                                                       verticalAlign:0.7f);
                 ImGui.PopFont();
 
                 if (topic.ProgressionState == QuestTopic.ProgressStates.Locked
@@ -147,7 +152,7 @@ internal sealed class SkillMapCanvas : HexCanvas
                     ImGui.PushFont(Scale.X < 0.6f ? Fonts.FontSmall : Fonts.FontNormal);
                     CustomImguiDraw.AddWrappedCenteredText(dl,
                                                            $"{topic.CompletedLevelCount} / {topic.Levels.Count}",
-                                                           posOnScreen + new Vector2(0, 25f * Scale.Y),
+                                                           posOnScreen + new Vector2(0, 35f * Scale.Y),
                                                            13, UiColors.ForegroundFull.Fade(labelAlpha));
                     ImGui.PopFont();
                 }
