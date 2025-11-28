@@ -85,6 +85,13 @@
       }
     },
     {
+      "ChildId": "391411b7-9ad3-4838-91cb-ce06460cebab"/*Multiply*/,
+      "Position": {
+        "X": 765.58765,
+        "Y": 519.05963
+      }
+    },
+    {
       "ChildId": "4b027f50-e412-4a28-b0f6-6c72c7972e77"/*Bar Background*/,
       "Position": {
         "X": 905.58765,
@@ -261,6 +268,7 @@
     {
       "Id": "a03923b3-d38e-4b26-ab6b-3c9fdffce8e7",
       "Label": "Progress Bar",
+      "Collapsed": "False",
       "Color": {
         "X": 0.6,
         "Y": 0.6,

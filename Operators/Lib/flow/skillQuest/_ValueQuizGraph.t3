@@ -2,11 +2,14 @@
   "Id": "64b2f2d5-0261-4f22-b30f-1f3a1421fe2e"/*_ValueQuizGraph*/,
   "Inputs": [
     {
-      "Id": "afcdab0a-b859-4137-82de-3fc20f306d57"/*Value*/,
-      "DefaultValue": 0.0
+      "Id": "7148d3f0-7135-40c8-a204-d52a043d494d"/*DisplayValueRange*/,
+      "DefaultValue": {
+        "X": 0.0,
+        "Y": 0.0
+      }
     },
     {
-      "Id": "c8285001-56ad-40a0-8db8-63e12bdc3e71"/*Difference*/,
+      "Id": "afcdab0a-b859-4137-82de-3fc20f306d57"/*Value*/,
       "DefaultValue": 0.0
     }
   ],
@@ -43,12 +46,6 @@
     {
       "Id": "16e4aefe-98fc-4c8f-992b-88a45c00bb12"/*RequestedResolution*/,
       "SymbolId": "c0a26813-bc97-4c42-b051-53a9a5913331",
-      "InputValues": [],
-      "Outputs": []
-    },
-    {
-      "Id": "18392c27-74a1-40cd-991f-17a48e1907af"/*CombineFloatLists*/,
-      "SymbolId": "2572b5f2-40af-442c-9354-7a9fa5bd378f",
       "InputValues": [],
       "Outputs": []
     },
@@ -261,7 +258,7 @@
         {
           "Id": "df158fcf-3042-48cf-8383-7bf4c1bcb8a6"/*LineWidth*/,
           "Type": "System.Single",
-          "Value": 0.057
+          "Value": 0.05
         }
       ],
       "Outputs": []
@@ -269,12 +266,6 @@
     {
       "Id": "859aa648-316a-4a28-aa94-828e472cab14"/*Vector2*/,
       "SymbolId": "926ab3fd-fbaf-4c4b-91bc-af277000dcb8",
-      "InputValues": [],
-      "Outputs": []
-    },
-    {
-      "Id": "8ca169ea-e2db-4484-a7b4-2fe90bf3a879"/*CompareFloatLists*/,
-      "SymbolId": "136aef9b-373d-487d-9863-a8691d1b909f",
       "InputValues": [],
       "Outputs": []
     },
@@ -467,6 +458,12 @@
       "SourceSlotId": "6276597c-580f-4aa4-b066-2735c415fd7c",
       "TargetParentOrChildId": "3ce847eb-876a-418e-977e-7fb53ed8be13",
       "TargetSlotId": "ae2368fa-e36c-40b2-b6f2-94d5cc95d3e2"
+    },
+    {
+      "SourceParentOrChildId": "00000000-0000-0000-0000-000000000000",
+      "SourceSlotId": "7148d3f0-7135-40c8-a204-d52a043d494d",
+      "TargetParentOrChildId": "3ce847eb-876a-418e-977e-7fb53ed8be13",
+      "TargetSlotId": "e7307b14-2702-4222-9dd6-7c39dc6dab8e"
     },
     {
       "SourceParentOrChildId": "1a684da8-8d44-4532-9a4a-e3eb8df777f9",

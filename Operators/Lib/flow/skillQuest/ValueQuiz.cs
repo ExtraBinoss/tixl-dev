@@ -22,5 +22,8 @@ namespace Lib.flow.skillQuest
 
         [Input(Guid = "ba4714ca-594a-4fab-aa01-bf02d1164eb2")]
         public readonly InputSlot<System.Numerics.Vector2> DifferenceRange = new InputSlot<System.Numerics.Vector2>();
+
+        [Input(Guid = "fe12fa62-9207-4a6a-bbb3-4d57218094bf")]
+        public readonly InputSlot<System.Numerics.Vector2> DisplayValueRange = new InputSlot<System.Numerics.Vector2>();
     }
 }

@@ -105,7 +105,60 @@ internal static class SkillProgressionUi
                 ImGui.PopFont();
             }
             ImGui.EndChild();
-            DrawActions(mode, index == 0, startAction);
+            
+            bool isFirst = index == 0;
+            ImGui.BeginChild("Actions2", new Vector2(0, _heightActionsArea), false, ImGuiWindowFlags.NoBackground);
+            {
+                var indent = 10;
+                ImGui.Indent(indent);
+                var style = ImGui.GetStyle();
+                var btnH = ImGui.GetFrameHeight();
+                var wSkip = ImGui.CalcTextSize("Skip").X + style.FramePadding.X * 2;
+                var labelCTA = isFirst ? "Start" : "Continue";
+
+                var wCont = ImGui.CalcTextSize(labelCTA).X + style.FramePadding.X * 2;
+                var totalW = wSkip + wCont + style.ItemSpacing.X * 2 + indent;
+
+                if (mode == ContentModes.PopUp)
+                {
+                    ImGui.PushStyleColor(ImGuiCol.Button, Color.Transparent.Rgba);
+                    if (ImGui.Button("Back to Hub", Vector2.Zero))
+                    {
+                        SkillTraining.SaveNewResult(SkillProgress.LevelResult.States.Skipped);
+                        SkillTraining.ExitPlayMode();
+                    }
+
+                    ImGui.SameLine();
+                }
+
+                ImGui.SameLine(ImGui.GetWindowWidth() - totalW - 20);
+
+                if (ImGui.Button("Skip", new Vector2(wSkip, btnH)))
+                {
+                    SkillTraining.SaveNewResult(SkillProgress.LevelResult.States.Skipped);
+                    SkillTraining.UpdateTopicStatesAndProgression();
+                }
+
+                ImGui.SameLine(0, 10);
+                ImGui.PopStyleColor();
+
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.20f, 0.45f, 0.95f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.25f, 0.55f, 1.00f, 1f));
+                if (ImGui.Button(labelCTA, new Vector2(wCont, btnH)))
+                {
+                    if (mode == ContentModes.PopUp)
+                    {
+                        startAction?.Invoke();
+                    }
+                    else
+                    {
+                        startAction?.Invoke();
+                    }
+                }
+
+                ImGui.PopStyleColor(2);
+            }
+            ImGui.EndChild();
         }
         ImGui.EndChild();
     }
@@ -119,7 +172,6 @@ internal static class SkillProgressionUi
         ImGui.BeginChild("Map", new Vector2(leftWidth, 0), false, ImGuiWindowFlags.NoBackground);
         {
             _mapCanvas.DrawContent(null, out _, _topicSelection);
-            //_mapCanvas.DrawContent(null, out _);
             if (mode == ContentModes.HubPanel && ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
                 SkillMapPopup.Show();
@@ -157,6 +209,14 @@ internal static class SkillProgressionUi
             {
                 ImGui.PushStyleColor(ImGuiCol.Button, Color.Transparent.Rgba);
                 if (ImGui.Button("Back to Hub", Vector2.Zero))
+                {
+                    SkillTraining.SaveNewResult(SkillProgress.LevelResult.States.Skipped);
+                    SkillTraining.ExitPlayMode();
+                }
+                
+                ImGui.SameLine(0,10);
+                
+                if (ImGui.Button("Replay last", Vector2.Zero))
                 {
                     SkillTraining.SaveNewResult(SkillProgress.LevelResult.States.Skipped);
                     SkillTraining.ExitPlayMode();
@@ -224,85 +284,7 @@ internal static class SkillProgressionUi
     }
 
     private static float _heightActionsArea => 40 * T3Ui.UiScaleFactor;
-
-    private static void DrawActions(ContentModes mode, bool isFirst, Action? startAction)
-    {
-        ImGui.BeginChild("Actions2", new Vector2(0, _heightActionsArea), false, ImGuiWindowFlags.NoBackground);
-        {
-            var indent = 10;
-            ImGui.Indent(indent);
-            var style = ImGui.GetStyle();
-            var btnH = ImGui.GetFrameHeight();
-            var wSkip = ImGui.CalcTextSize("Skip").X + style.FramePadding.X * 2;
-            var labelCTA = isFirst ? "Start" : "Continue";
-
-            var wCont = ImGui.CalcTextSize(labelCTA).X + style.FramePadding.X * 2;
-            var totalW = wSkip + wCont + style.ItemSpacing.X * 2 + indent;
-
-            if (mode == ContentModes.PopUp)
-            {
-                ImGui.PushStyleColor(ImGuiCol.Button, Color.Transparent.Rgba);
-                if (ImGui.Button("Back to Hub", Vector2.Zero))
-                {
-                    SkillTraining.SaveNewResult(SkillProgress.LevelResult.States.Skipped);
-                    SkillTraining.ExitPlayMode();
-                }
-
-                ImGui.SameLine();
-
-                //var right = ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X;
-                //ImGui.SetCursorPosX(right - totalW);
-            }
-
-            ImGui.SameLine(ImGui.GetWindowWidth() - totalW - 20);
-
-            if (ImGui.Button("Skip", new Vector2(wSkip, btnH)))
-            {
-                //SkillManager.CompleteAndProgressToNextLevel(SkillProgression.LevelResult.States.Skipped);
-                SkillTraining.SaveNewResult(SkillProgress.LevelResult.States.Skipped);
-                SkillTraining.UpdateTopicStatesAndProgression();
-            }
-
-            ImGui.SameLine(0, 10);
-            ImGui.PopStyleColor();
-
-            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.20f, 0.45f, 0.95f, 1f));
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.25f, 0.55f, 1.00f, 1f));
-            if (ImGui.Button(labelCTA, new Vector2(wCont, btnH)))
-            {
-                if (mode == ContentModes.PopUp)
-                {
-                    startAction?.Invoke();
-                }
-                else
-                {
-                    startAction?.Invoke();
-                }
-            }
-
-            ImGui.PopStyleColor(2);
-        }
-        ImGui.EndChild();
-    }
-
-    // private static void CenteredText(string text)
-    // {
-    //     var labelSize = ImGui.CalcTextSize(text);
-    //     var availableSize = ImGui.GetWindowSize().X;
-    //     ImGui.SetCursorPosX(availableSize / 2 - labelSize.X / 2);
-    //     ImGui.TextUnformatted(text);
-    // }
-    //
-    // private static void DrawTorusProgress(ImDrawListPtr dl, Vector2 center, float radius, float progress, Color color)
-    // {
-    //     dl.PathClear();
-    //     var opening = 0.5f;
-    //
-    //     var aMin = 0.5f * MathF.PI + opening;
-    //     var aMax = 2.5f * MathF.PI - opening;
-    //     dl.PathArcTo(center, radius, aMin, MathUtils.Lerp(aMin, aMax, progress), 64);
-    //     dl.PathStroke(color, ImDrawFlags.None, 6);
-    // }
+    
 
     private static HashSet<QuestTopic> _topicSelection = [];
     private static readonly SkillMapCanvas _mapCanvas = new();

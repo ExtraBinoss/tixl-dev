@@ -54,7 +54,7 @@ sampler texSampler : register(s0);
 
     LegacyPoint p = Points[index];
 
-    float divider = pointCount < 2 ? 1 : (pointCount - 1);
+    float divider = pointCount < 2 ? 1 : (pointCount - 0);
     float f = (float)i.x / divider;
     float2 uv = float2(f, 0.5);
 

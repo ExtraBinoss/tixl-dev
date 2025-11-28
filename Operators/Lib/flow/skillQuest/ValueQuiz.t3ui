@@ -13,8 +13,8 @@
     {
       "InputId": "ba4714ca-594a-4fab-aa01-bf02d1164eb2"/*DifferenceRange*/,
       "Position": {
-        "X": 584.907,
-        "Y": -706.37756
+        "X": 943.6841,
+        "Y": -846.57996
       },
       "GroupTitle": "Additional Parameters...",
       "Min": 0.003,
@@ -25,8 +25,16 @@
       "InputId": "c09a529a-dfe2-4bf8-86ce-369aeadbee4a"/*Goal*/,
       "Relevancy": "Required",
       "Position": {
-        "X": 483.23914,
-        "Y": -1024.8175
+        "X": 473.88983,
+        "Y": -1008.99146
+      },
+      "Description": "The reference goal for to current challenge.\nNeeds to be connected to the (hidden) solution."
+    },
+    {
+      "InputId": "fe12fa62-9207-4a6a-bbb3-4d57218094bf"/*DisplayValueRange*/,
+      "Position": {
+        "X": 344.79425,
+        "Y": -1071.6667
       }
     }
   ],
@@ -41,8 +49,8 @@
     {
       "ChildId": "34eb4f91-fa37-4638-8657-b1484ddf56d7"/*CompareFloatLists*/,
       "Position": {
-        "X": 1038.6406,
-        "Y": -978.7955
+        "X": 943.6841,
+        "Y": -942.27374
       }
     },
     {
@@ -55,8 +63,8 @@
     {
       "ChildId": "a58041c7-1de9-4bf5-99a0-7e738a29af34"/*_ValueQuizGraph*/,
       "Position": {
-        "X": 623.23914,
-        "Y": -1024.8175
+        "X": 613.88983,
+        "Y": -1008.99146
       }
     }
   ],

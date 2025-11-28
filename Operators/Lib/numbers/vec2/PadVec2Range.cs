@@ -16,9 +16,17 @@ internal sealed class PadVec2Range : Instance<PadVec2Range>
     private void Update(EvaluationContext context)
     {
         var range = A.GetValue(context);
-
+        
         var min = range.X;
         var max = range.Y;
+
+        var guaranteedRange = GuaranteedRange.GetValue(context);
+        if (guaranteedRange != Vector2.Zero)
+        {
+            min = MathF.Min(min,guaranteedRange.X);
+            max = MathF.Max(max,guaranteedRange.Y);
+        }
+        
         var u = UniformScale.GetValue(context);
         var minExtend = ClampMinExtend.GetValue(context);
         var center = (min + max) * 0.5f;
@@ -33,6 +41,9 @@ internal sealed class PadVec2Range : Instance<PadVec2Range>
     [Input(Guid = "5b56faab-7a94-4026-8089-a80db8ff2d9e")]
     public readonly InputSlot<float> UniformScale = new();
 
+    [Input(Guid = "E7307B14-2702-4222-9DD6-7C39DC6DAB8E")]
+    public readonly InputSlot<Vector2> GuaranteedRange = new();
+    
     [Input(Guid = "D7DCBC7A-146D-42F0-84B1-A7D42F662487")]
     public readonly InputSlot<float> ClampMinExtend = new();
 }

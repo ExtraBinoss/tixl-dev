@@ -17,7 +17,7 @@ namespace Lib.flow.skillQuest{
         public readonly InputSlot<T3.Core.DataTypes.Texture2D> YourSolution = new InputSlot<T3.Core.DataTypes.Texture2D>();
 
         [Input(Guid = "629ec47f-64d7-4c05-a5b1-29fe9303c8eb")]
-        public readonly InputSlot<T3.Core.DataTypes.Texture2D> Reference = new InputSlot<T3.Core.DataTypes.Texture2D>();
+        public readonly InputSlot<T3.Core.DataTypes.Texture2D> DoNotChange = new InputSlot<T3.Core.DataTypes.Texture2D>();
 
         [Input(Guid = "cf267a38-5504-4d0c-b149-17bbe62c70cf")]
         public readonly InputSlot<System.Numerics.Vector2> DifferenceRange = new InputSlot<System.Numerics.Vector2>();

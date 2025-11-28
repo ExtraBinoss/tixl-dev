@@ -394,7 +394,8 @@ public static class GradientEditor
 
         if (gradient.Steps == null || gradient.Steps.Count == 0)
         {
-            Log.Warning("Can't draw invalid gradient");
+            drawList.AddText(areaOnScreen.Min + areaOnScreen.GetSize() * 0.5f - new Vector2(Fonts.FontNormal.FontSize * 0.5f) , UiColors.ForegroundFull.Fade(0.4f),  "?");
+            //Log.Warning("Can't draw invalid gradient");
             return;
         }
 

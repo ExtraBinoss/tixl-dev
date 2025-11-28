@@ -3,12 +3,13 @@
   "Description": "",
   "InputUis": [
     {
-      "InputId": "629ec47f-64d7-4c05-a5b1-29fe9303c8eb"/*Reference*/,
+      "InputId": "629ec47f-64d7-4c05-a5b1-29fe9303c8eb"/*DoNotChange*/,
       "Relevancy": "Required",
       "Position": {
         "X": -435.44763,
         "Y": -294.30038
-      }
+      },
+      "Description": "This is the reference input. \nDo not disconnect."
     },
     {
       "InputId": "a8d44123-99b4-4285-82f5-84531f0e27d3"/*YourSolution*/,

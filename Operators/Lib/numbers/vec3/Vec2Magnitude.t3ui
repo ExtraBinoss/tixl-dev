@@ -1,0 +1,23 @@
+{
+  "Id": "5adffcb0-5e38-4e80-80a3-a56a427d6d7a"/*Vec2Magnitude*/,
+  "Description": "",
+  "InputUis": [
+    {
+      "InputId": "2b0f8342-995f-492a-b172-5f42533d9453"/*Input*/,
+      "Position": {
+        "X": -200.0,
+        "Y": 0.0
+      }
+    }
+  ],
+  "SymbolChildUis": [],
+  "OutputUis": [
+    {
+      "OutputId": "b3fcb151-8dc1-4c19-9623-fcd4d5095f2e"/*Result*/,
+      "Position": {
+        "X": 0.0,
+        "Y": 100.0
+      }
+    }
+  ]
+}

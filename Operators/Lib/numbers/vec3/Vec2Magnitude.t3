@@ -1,0 +1,15 @@
+{
+  "Id": "5adffcb0-5e38-4e80-80a3-a56a427d6d7a"/*Vec2Magnitude*/,
+  "Inputs": [
+    {
+      "Id": "2b0f8342-995f-492a-b172-5f42533d9453"/*Input*/,
+      "DefaultValue": {
+        "X": 0.0,
+        "Y": 0.0,
+        "Z": 0.0
+      }
+    }
+  ],
+  "Children": [],
+  "Connections": []
+}

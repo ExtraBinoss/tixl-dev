@@ -19,6 +19,9 @@ namespace Lib.flow.skillQuest{
         [Input(Guid = "afcdab0a-b859-4137-82de-3fc20f306d57")]
         public readonly InputSlot<float> Value = new InputSlot<float>();
 
+        [Input(Guid = "7148d3f0-7135-40c8-a204-d52a043d494d")]
+        public readonly InputSlot<System.Numerics.Vector2> DisplayValueRange = new InputSlot<System.Numerics.Vector2>();
+
     }
 }
 
