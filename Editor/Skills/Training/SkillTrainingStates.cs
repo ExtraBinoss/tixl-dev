@@ -10,7 +10,7 @@ internal static class SkillTrainingStates
               Enter: context =>
                      {
                          if (context.PreviousUiState != null)
-                             UiState.ApplyUiState(context.PreviousUiState);
+                             UiConfig.ApplyUiState(context.PreviousUiState);
                      },
               Update: context => { },
               Exit:

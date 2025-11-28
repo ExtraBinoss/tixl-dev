@@ -58,7 +58,7 @@ internal sealed class GraphWindow : Windows.Window
     public ProjectView? ProjectView { get; private set; }
 
     /// <summary>
-    /// Initialize <see cref="ProjectView"/> to for a loaded project 
+    /// Initialize <see cref="ProjectView"/> for loading a project 
     /// </summary>
     internal bool TrySetToProject(OpenedProject project, bool tryRestoreViewArea = true)
     {

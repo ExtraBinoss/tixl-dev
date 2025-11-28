@@ -13,6 +13,8 @@ internal static class SkillQuestPanel
 {
     internal static void Draw(GraphWindow window, bool projectViewJustClosed)
     {
+        SkillTraining.SetGraphWindow(window);
+        
         if (!UserSettings.Config.ShowSkillQuestInHub)
             return;
         
@@ -21,43 +23,48 @@ internal static class SkillQuestPanel
             ImGui.TextUnformatted("no skill quest data");
             return;
         }
-
+        
         if (projectViewJustClosed)
         {
-            _selectedTopic.Clear();
+            SkillProgressionUi.TopicSelection.Clear();
             if (activeTopic.ProgressionState == QuestTopic.ProgressStates.Completed)
             {
                 foreach (var topic in SkillMapData.Data.Topics)
                 {
-                    if (topic.ProgressionState == QuestTopic.ProgressStates.Completed
-                        || topic.ProgressionState == QuestTopic.ProgressStates.Unlocked
-                        || topic.ProgressionState == QuestTopic.ProgressStates.Passed)
-                        _selectedTopic.Add(topic);
+                    if (topic.ProgressionState 
+                        is QuestTopic.ProgressStates.Completed 
+                        or QuestTopic.ProgressStates.Unlocked 
+                        or QuestTopic.ProgressStates.Passed)
+                        SkillProgressionUi.TopicSelection.Add(topic);
                 }
             }
             else
             {
-                _selectedTopic.Add(activeTopic);
+                SkillProgressionUi.TopicSelection.Add(activeTopic);
             }
-            _mapCanvas.FocusTopics(_selectedTopic);
+            _mapCanvas.FocusTopics(SkillProgressionUi.TopicSelection);
             
             // Only selected active
-            _selectedTopic.Clear();
-            _selectedTopic.Add(activeTopic);
+            SkillProgressionUi.TopicSelection.Clear();
+            SkillProgressionUi.TopicSelection.Add(activeTopic);
         }
         
         ContentPanel.Begin("Skill Quest", 
                            "An interactive journey from playful TiXL basics to advanced real-time graphics design.", 
                            () => ImGui.Dummy(new Vector2()), Height);
         
-        SkillProgressionUi.DrawContent(activeTopic, activeLevel, SkillProgressionUi.ContentModes.HubPanel, ()=>{
-                                           SkillTraining.StartPlayModeFromHub(window);
-        });
+        SkillProgressionUi.DrawContent(activeTopic, 
+                                       activeLevel, 
+                                       SkillProgressionUi.ContentModes.HubPanel, 
+                                       ()=>
+                                       {
+                                           SkillTraining.StartActiveLevel(forceSaveUiState:true);
+                                       });
         ContentPanel.End();
     }
 
     internal static float Height => 230 * T3Ui.UiScaleFactor;
 
-    private static readonly HashSet<QuestTopic> _selectedTopic = [];
+    //private static readonly HashSet<QuestTopic> _selectedTopic = [];
     private static readonly SkillMapCanvas _mapCanvas = new();
 }

@@ -53,7 +53,7 @@ public static partial class T3Ui
         }
         else if (UserActions.ToggleAllUiElements.Triggered())
         {
-            UiState.ToggleAllUiElements();
+            UiConfig.ToggleAllUiElements();
         }
         else if (UserActions.SearchGraph.Triggered())
         {
@@ -64,7 +64,7 @@ public static partial class T3Ui
             UserSettings.Config.FullScreen = !UserSettings.Config.FullScreen;
         }
         else if (UserActions.ToggleFocusMode.Triggered())
-            UiState.ToggleFocusMode();
+            UiConfig.ToggleFocusMode();
     }
 
     /// <summary>

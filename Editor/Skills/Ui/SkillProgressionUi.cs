@@ -52,9 +52,9 @@ internal static class SkillProgressionUi
 
     private static void FocusTopicOnMap(QuestTopic topic)
     {
-        _topicSelection.Clear();
-        _topicSelection.Add(topic);
-        _mapCanvas.FocusTopics(_topicSelection);
+        TopicSelection.Clear();
+        TopicSelection.Add(topic);
+        _mapCanvas.FocusTopics(TopicSelection);
     }
 
     private static void DrawNextLevelContent(QuestTopic topic, QuestLevel? previousLevel, QuestLevel nextLevel, int index, ContentModes mode,
@@ -70,7 +70,7 @@ internal static class SkillProgressionUi
 
         ImGui.BeginChild("Map", new Vector2(leftWidth, 0), false, ImGuiWindowFlags.NoBackground);
         {
-            _mapCanvas.DrawContent(null, out _);
+            _mapCanvas.DrawContent(null, out _, TopicSelection);
             if (mode == ContentModes.HubPanel && ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
                 SkillMapPopup.Show();
@@ -81,7 +81,7 @@ internal static class SkillProgressionUi
 
         ImGui.BeginChild("Right", new Vector2(0, 0), false, ImGuiWindowFlags.NoBackground);
         {
-            ImGui.BeginChild("TopContent", new Vector2(0, -_heightActionsArea), false,
+            ImGui.BeginChild("TopContent", new Vector2(0, -HeightActionsArea), false,
                              ImGuiWindowFlags.NoBackground);
             {
                 FormInputs.AddVerticalSpace(20);
@@ -107,7 +107,7 @@ internal static class SkillProgressionUi
             ImGui.EndChild();
             
             bool isFirst = index == 0;
-            ImGui.BeginChild("Actions2", new Vector2(0, _heightActionsArea), false, ImGuiWindowFlags.NoBackground);
+            ImGui.BeginChild("Actions2", new Vector2(0, HeightActionsArea), false, ImGuiWindowFlags.NoBackground);
             {
                 var indent = 10;
                 ImGui.Indent(indent);
@@ -171,7 +171,7 @@ internal static class SkillProgressionUi
         var leftWidth = 240 * uiScale;
         ImGui.BeginChild("Map", new Vector2(leftWidth, 0), false, ImGuiWindowFlags.NoBackground);
         {
-            _mapCanvas.DrawContent(null, out _, _topicSelection);
+            _mapCanvas.DrawContent(null, out _, TopicSelection);
             if (mode == ContentModes.HubPanel && ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             {
                 SkillMapPopup.Show();
@@ -186,7 +186,7 @@ internal static class SkillProgressionUi
 
         ImGui.SameLine(0, 4);
 
-        var paddingForActions = mode == ContentModes.PopUp ? _heightActionsArea : 0;
+        var paddingForActions = mode == ContentModes.PopUp ? HeightActionsArea : 0;
         
         ImGui.BeginChild("Right", new Vector2(0, -paddingForActions), false, ImGuiWindowFlags.NoBackground);
         {
@@ -253,7 +253,7 @@ internal static class SkillProgressionUi
         }
 
         CustomComponents.StylizedText(label, Fonts.FontNormal, UiColors.Text.Fade(0.3f));
-        var countLabel = $"{index + 1}/{topic.Levels.Count}";
+        var countLabel = $"{index }/{topic.Levels.Count}";
         var labelSize = ImGui.CalcTextSize(countLabel);
         ImGui.SameLine(ImGui.GetColumnWidth() - labelSize.X, 0);
         CustomComponents.StylizedText(countLabel, Fonts.FontNormal, UiColors.Text.Fade(0.3f));
@@ -283,9 +283,8 @@ internal static class SkillProgressionUi
         FormInputs.AddVerticalSpace(20);
     }
 
-    private static float _heightActionsArea => 40 * T3Ui.UiScaleFactor;
-    
+    private static float HeightActionsArea => 40 * T3Ui.UiScaleFactor;
 
-    private static HashSet<QuestTopic> _topicSelection = [];
+    public static readonly HashSet<QuestTopic> TopicSelection = [];
     private static readonly SkillMapCanvas _mapCanvas = new();
 }

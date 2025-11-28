@@ -10,7 +10,7 @@ namespace T3.Editor.Gui.Windows.Layouts;
 /// <summary>
 /// Controls visibility of global ui elements like main menu etc.
 /// </summary>
-internal static class UiState
+internal static class UiConfig
 {
     internal static void ToggleFocusMode()
     {
@@ -89,18 +89,25 @@ internal static class UiState
                                         UserSettings.Config.ShowToolbar,
                                         UserSettings.Config.ShowTimeline,
                                         UserSettings.Config.WindowLayoutIndex,
-                                        UserSettings.Config.FocusMode
+                                        UserSettings.Config.FocusMode,
+                                        UserSettings.Config.ShowInteractionOverlay,
+                                        UserSettings.Config.GraphStyle
                                        );
     }
     
-    internal static void ApplyUiState(UiElementsVisibility state)
+    internal static void ApplyUiState(UiElementsVisibility? state)
     {
+        if (state == null)
+            return;
+        
         UserSettings.Config.ShowMainMenu= state.MainMenu;
         UserSettings.Config.EnableMainMenuHoverPeek = state.MainMenu;
         UserSettings.Config.ShowTitleAndDescription= state.TitleAndDescription;
         UserSettings.Config.ShowToolbar= state.GraphToolbar;
         UserSettings.Config.ShowTimeline= state.Timeline;
         UserSettings.Config.FocusMode= state.IsFocusMode;
+        UserSettings.Config.ShowInteractionOverlay = state.InteractionOverlay;
+        UserSettings.Config.GraphStyle = state.GraphStyle;
         
         UserSettings.Config.WindowLayoutIndex= state.WindowLayoutIndex;
         LayoutHandling.LoadAndApplyLayoutOrFocusMode((LayoutHandling.Layouts)state.WindowLayoutIndex);
@@ -113,5 +120,7 @@ internal static class UiState
         bool GraphToolbar,
         bool Timeline,
         int WindowLayoutIndex,
-        bool IsFocusMode);
+        bool IsFocusMode,
+        bool InteractionOverlay,
+        UserSettings.GraphStyles GraphStyle);
 }

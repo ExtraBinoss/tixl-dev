@@ -190,11 +190,10 @@ internal static class FormInputs
 
     public static bool DrawEnumDropdown<T>(ref T selectedValue, string? label, T defaultValue= default) where T : struct, Enum, IConvertible, IFormattable, IComparable
     {
-        var names = Enum.GetNames<T>();
         var index = 0;
         var selectedIndex = 0;
 
-        foreach (var n in names)
+        foreach (var n in Enum.GetNames<T>())
         {
             if (n == selectedValue.ToString())
             {
@@ -208,7 +207,7 @@ internal static class FormInputs
         ImGui.PushStyleColor(ImGuiCol.FrameBg, UiColors.BackgroundButton.Rgba);
         ImGui.PushStyleColor(ImGuiCol.Text, selectedValue.Equals(defaultValue) ? UiColors.TextMuted.Rgba : UiColors.ForegroundFull.Rgba);
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 5);
-        var modified = ImGui.Combo($"##dropDown{typeof(T)}{label}", ref selectedIndex, names, names.Length, names.Length);
+        var modified = ImGui.Combo($"##dropDown{typeof(T)}{label}", ref selectedIndex, Enum.GetNames<T>(), Enum.GetNames<T>().Length, Enum.GetNames<T>().Length);
         if (modified)
         {
             selectedValue = Enum.GetValues<T>()[selectedIndex];

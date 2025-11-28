@@ -390,7 +390,7 @@ internal static class AppMenuBar
             if (ImGui.MenuItem("Toggle All", UserActions.ToggleAllUiElements.ListShortcuts(), false,
                                !T3Ui.IsCurrentlySaving))
             {
-                UiState.ToggleAllUiElements();
+                UiConfig.ToggleAllUiElements();
             }
 
             ImGui.Separator();
@@ -402,7 +402,7 @@ internal static class AppMenuBar
 
             if (ImGui.MenuItem("Focus Mode", UserActions.ToggleFocusMode.ListShortcuts(), UserSettings.Config.FocusMode))
             {
-                UiState.ToggleFocusMode();
+                UiConfig.ToggleFocusMode();
             }
 
             ImGui.EndMenu();

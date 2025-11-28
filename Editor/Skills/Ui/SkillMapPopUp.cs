@@ -15,8 +15,6 @@ internal static class SkillMapPopup
     internal static void Show()
     {
         _showNextFrame = true;
-
-
     }
 
     internal static void Draw()
@@ -55,8 +53,8 @@ internal static class SkillMapPopup
             
             ImGui.BeginChild("Map", new Vector2(0, -10), false, ImGuiWindowFlags.NoBackground);
             {
-                _topicSelection ??= new();
-                _mapCanvas.DrawContent(null, out _, _topicSelection);
+                _topicSelection ??= [];
+                _mapCanvas.DrawContent(HandleTopicInteraction, out _, _topicSelection);
 
             }
             
@@ -74,6 +72,29 @@ internal static class SkillMapPopup
         ImGui.End();
 
         ImGui.PopStyleColor();
+    }
+
+    private static void HandleTopicInteraction(QuestTopic topic, bool isSelected)
+    {
+        if (!ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            return;
+
+        if (!topic.IsPlayable())
+            return;
+
+        SkillProgress.Data.ActiveTopicId = topic.Id;
+        SkillTraining.UpdateTopicStatesAndProgression();
+        SkillTraining.StartActiveLevel();
+    }
+
+    private static bool IsPlayable(this QuestTopic  topic)
+    {
+        return topic.ProgressionState 
+                   is QuestTopic.ProgressStates.Unlocked 
+                   or QuestTopic.ProgressStates.Active 
+                   or QuestTopic.ProgressStates.Passed 
+                   or QuestTopic.ProgressStates.Completed 
+                   or QuestTopic.ProgressStates.Started;
     }
 
     private static bool _showNextFrame;

@@ -12,10 +12,8 @@ namespace T3.Editor.Skills.Ui;
 
 internal sealed class SkillMapCanvas : HexCanvas
 {
-    public bool DrawContent(HandleTopicInteraction? topicAction, out HexCanvas.Cell mouseCell, HashSet<QuestTopic>? selection=null)
+    public bool DrawContent(HandleTopicInteraction? topicAction, out HexCanvas.Cell mouseCell, HashSet<QuestTopic> selection)
     {
-        selection ??= _noSelection;
-        
         UpdateCanvas(out _);
 
         var dl = ImGui.GetWindowDrawList();
@@ -79,7 +77,7 @@ internal sealed class SkillMapCanvas : HexCanvas
         var isSelected = selection.Contains(topic);
         if (isSelected)
         {
-            dl.AddNgonRotated(posOnScreen, radius, UiColors.StatusActivated, false);
+            dl.AddNgonRotated(posOnScreen, radius, UiColors.ForegroundFull, false);
         }
 
         foreach (var unlockTargetId in topic.UnlocksTopics)

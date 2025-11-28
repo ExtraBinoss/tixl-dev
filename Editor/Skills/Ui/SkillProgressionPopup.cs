@@ -1,7 +1,6 @@
 ﻿using ImGuiNET;
 using T3.Editor.Gui;
 using T3.Editor.Gui.Styling;
-using T3.Editor.Skills.Data;
 using T3.Editor.Skills.Training;
 using Color = T3.Core.DataTypes.Vector.Color;
 using Vector2 = System.Numerics.Vector2;
@@ -48,7 +47,7 @@ internal static class SkillProgressionPopup
             SkillProgressionUi.DrawContent(topic,
                                            activeLevel,
                                            SkillProgressionUi.ContentModes.PopUp,
-                                           () => { SkillTraining.CompleteAndProgressToNextLevel(SkillProgress.LevelResult.States.Completed); });
+                                           SkillTraining.CompleteAndProgressToNextLevel);
 
             ImGui.EndPopup();
             StarShowerEffect.DrawAndUpdate();

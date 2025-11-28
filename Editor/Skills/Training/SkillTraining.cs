@@ -2,9 +2,11 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using ImGuiNET;
+using T3.Core.Animation;
 using T3.Editor.Gui;
 using T3.Editor.Gui.Input;
 using T3.Editor.Gui.MagGraph.Interaction;
+using T3.Editor.Gui.MagGraph.Ui;
 using T3.Editor.Gui.Styling;
 using T3.Editor.Gui.UiHelpers;
 using T3.Editor.Gui.Window;
@@ -31,11 +33,12 @@ internal static partial class SkillTraining
         UpdateTopicStatesAndProgression();
     }
 
-    public static void StartPlayModeFromHub(GraphWindow graphWindow)
+    public static void SetGraphWindow(GraphWindow graphWindow)
     {
         _context.GraphWindow = graphWindow;
-        StartActiveLevel();
     }
+    
+    
 
     public static void StartTopic(QuestTopic topic)
     {
@@ -45,8 +48,21 @@ internal static partial class SkillTraining
         StartActiveLevel();
     }
 
-    internal static void StartActiveLevel()
+    private static bool _savedOriginalLayout;
+
+    internal record UiState
     {
+        
+    }
+    
+    internal static void StartActiveLevel(bool forceSaveUiState= false)
+    {
+        if (_context.GraphWindow == null)
+        {
+            Debug.Assert(GraphWindow.GraphWindowInstances.Count > 0);
+            _context.GraphWindow = GraphWindow.GraphWindowInstances[0];
+        }
+        
         Debug.Assert(_context.GraphWindow != null);
         Debug.Assert(_context.ActiveTopic != null);
         Debug.Assert(_context.ActiveLevel != null);
@@ -63,35 +79,47 @@ internal static partial class SkillTraining
             return;
         }
 
-        SkillProgress.Data.ActiveTopicId = _context.ActiveTopic.Id;
-        _context.GraphWindow.TrySetToProject(openedProject, tryRestoreViewArea: false);
-        _context.ProjectView?.FocusViewToSelection();
-        _context.OpenedProject = openedProject;
-        _context.ProjectView = _context.GraphWindow.ProjectView;
+        // Keep the original UI only once because it might not be
+        // fully restored between level jumps.
+        if (!_savedOriginalLayout || forceSaveUiState)
+        {
+            _context.PreviousUiState = UiConfig.KeepUiState();
+            _savedOriginalLayout = true;
+        }
 
-        Debug.Assert(_context.OpenedProject != null);
-
-        // Keep and apply a new UI state
-        _context.PreviousUiState = UiState.KeepUiState();
+        // Switch layout
         LayoutHandling.LoadAndApplyLayoutOrFocusMode(LayoutHandling.Layouts.SkillQuest);
 
+        // Check if for some reason Output window is not accessible after loading layout
         if (!OutputWindow.TryGetPrimaryOutputWindow(out var outputWindow))
         {
             Log.Debug("Can't access primary output window");
-            UiState.ApplyUiState(_context.PreviousUiState);
+            UiConfig.ApplyUiState(_context.PreviousUiState!);
             _context.StateMachine.SetState(SkillTrainingStates.Inactive, _context);
             return;
         }
-
-        UiState.HideAllUiElements();
+        
+        UiConfig.HideAllUiElements();
+        UserSettings.Config.GraphStyle = UserSettings.GraphStyles.Magnetic;
+        
         UserSettings.Config.EnableIdleMotion = true;
+        Playback.Current.TimeInBars = 0;
+        
+        SkillProgress.Data.ActiveTopicId = _context.ActiveTopic.Id;
+        
+        _context.GraphWindow.TrySetToProject(openedProject, tryRestoreViewArea: false);
+        _context.ProjectView = _context.GraphWindow.ProjectView;
+        _context.ProjectView?.FocusViewToSelection();
+        _context.OpenedProject = openedProject;
 
+        Debug.Assert(_context.OpenedProject != null);
+        
         // Pin output
         var rootInstance = _context.OpenedProject.Structure.GetRootInstance();
         if (rootInstance == null)
         {
             Log.Debug("Failed to load root");
-            UiState.ApplyUiState(_context.PreviousUiState);
+            UiConfig.ApplyUiState(_context.PreviousUiState);
             _context.StateMachine.SetState(SkillTrainingStates.Inactive, _context);
             return;
         }
@@ -153,9 +181,8 @@ internal static partial class SkillTraining
         }
     }
 
-    internal static void CompleteAndProgressToNextLevel(SkillProgress.LevelResult.States status)
+    internal static void CompleteAndProgressToNextLevel()
     {
-
         ExitPlayMode();
         StartActiveLevel();
     }
