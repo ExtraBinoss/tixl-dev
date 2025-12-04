@@ -109,6 +109,9 @@ public static class OpUi
                   { Guid.Parse("e6072ecf-30d2-4c52-afa1-3b195d61617b"), GetFloatVarUi.DrawChildUi },
                   { Guid.Parse("2a0c932a-eb81-4a7d-aeac-836a23b0b789"), SetFloatVarUi.DrawChildUi },
                   
+                  { Guid.Parse("15012739-97b0-49e6-8bdc-cd45cd262560"), GetStringVarUi.DrawChildUi },
+                  { Guid.Parse("9c9274c1-3f85-4f57-9eb5-1e0a0b1cce00"), SetStringVarUi.DrawChildUi },
+                  
                   { Guid.Parse("9a843835-d39c-428f-b996-6334323e8106"), SetBoolVarUi.DrawChildUi },
                   { Guid.Parse("604bfb46-fe8f-4c8b-896b-1b7bc827137b"), GetBoolVarUi.DrawChildUi },
 
