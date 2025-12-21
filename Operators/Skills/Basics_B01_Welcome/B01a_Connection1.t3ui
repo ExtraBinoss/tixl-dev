@@ -61,22 +61,23 @@
     {
       "Id": "7e6bc27a-5dd8-4df5-a5b7-84ae7d15d279",
       "ChildId": "346a5eef-0135-4d15-9841-1a82bba84fc7",
-      "Description": "In these first Levels I will walk you through the basics of using the TiXL's node graph."
+      "Description": "These early levels introduce the basics of working with TiXL’s node graph."
     },
     {
       "Id": "1a5a421e-a96e-4c66-983f-f1286ca06d68",
       "ChildId": "08c5f3b7-76ad-4e6d-8536-493c3952510c",
-      "Description": "Each Level shows its solution on the bottom. \nYour task is to replicate that solution by using the available Operators and connect them to the [Quiz] operator on the right.\n"
+      "Description": "Each level shows the target image at the bottom.\nRecreate it using the available operators and connect them to the [Quiz] operator."
     },
     {
       "Id": "6566d948-3ee6-4a80-827d-ad3f414d53db",
-      "ChildId": "346a5eef-0135-4d15-9841-1a82bba84fc7",
-      "Description": "Tip: If you get stuck, you can always expand and take a look at the Solution."
+      "ChildId": "db2c4eab-f92a-4d5d-a465-dbe30c438daf",
+      "Description": "Tip: If stuck, expand the Solution to see how it was built."
     },
     {
       "Id": "7cf2cc9a-cc99-4be4-b209-735cb12e62dc",
       "ChildId": "346a5eef-0135-4d15-9841-1a82bba84fc7",
-      "Description": "Let's start by learning how to connect Operators:\nFind the [ImageQuiz] operator and drag a connection from its output connector onto the [ImageResult]."
+      "Description": "Start by learning how to connect operators.\nDrag a connection from [RoundedRect] to [ImageQuiz].",
+      "Style": "InfoFor"
     }
   ]
 }

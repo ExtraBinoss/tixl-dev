@@ -119,23 +119,23 @@
   "TourPoints": [
     {
       "Id": "ecf54e4e-d71a-4261-b1cd-8fd72ae8909a",
-      "ChildId": "17eb7487-9b33-4239-aafd-5b8a3b3085c2",
-      "Description": "Sometimes dealing with numbers is hard. Why not let TiXL do that work for us?"
+      "ChildId": "7fb42eef-0789-470f-b63e-ed1750b50e4b",
+      "Description": "Handling many numbers at once can be tricky.\nLet TiXL do the heavy lifting."
     },
     {
       "Id": "b1c8874f-6751-4def-ad03-7d9e3df7f70e",
-      "ChildId": "17eb7487-9b33-4239-aafd-5b8a3b3085c2",
-      "Description": "We renamed these  [Value] operators by hitting the Return-key..."
+      "ChildId": "7fb42eef-0789-470f-b63e-ed1750b50e4b",
+      "Description": "These [Value] operators were renamed using the Return key."
     },
     {
       "Id": "8111160f-5061-4995-857c-3fc31f37d484",
-      "ChildId": "17eb7487-9b33-4239-aafd-5b8a3b3085c2",
-      "Description": "You can zoom into the graph see the current values of the Operators."
+      "ChildId": "7fb42eef-0789-470f-b63e-ed1750b50e4b",
+      "Description": "Zoom into the graph to see live values."
     },
     {
       "Id": "6af48546-4d4b-47ac-9d7e-cfb2ff68859b",
       "ChildId": "b3209a3b-6176-46be-9a5e-477aaedb088e",
-      "Description": "Try to multiply all tree values...\nTo connect the second input remember to drag the output connectors onto the [Multiply] operatoprs and look for the blinking dot. "
+      "Description": "Multiply all three values.\nTo connect additional inputs, drag outputs onto [Multiply] and watch for the blinking dot."
     }
   ]
 }

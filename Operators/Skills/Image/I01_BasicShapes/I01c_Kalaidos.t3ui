@@ -105,12 +105,12 @@
     {
       "Id": "dcf690c4-6737-4638-af7a-b95586e8d18b",
       "ChildId": "2b6c7ccf-089a-4586-9277-515bc11a4006",
-      "Description": "Frequently combining multiple copies of an Operator can lead to very interesting effects.\nConsider this challenge: It looks like the [LinearGradient] is being repeated twice to form this interesting pattern."
+      "Description": "Repeating operators often leads to interesting results.\nHere, a [LinearGradient] is repeated to form a kaleidoscope-like pattern."
     },
     {
       "Id": "57ef0f62-5ead-4094-a8a8-55321738fa62",
       "ChildId": "ee124649-1946-4bdf-ba13-53cb895453fd",
-      "Description": "You need to adjust two parameters of this [LinearGradient]. Can you find, which ones?"
+      "Description": "Two parameters of the [LinearGradient] need adjustment.\nCan you figure out which ones?"
     }
   ]
 }

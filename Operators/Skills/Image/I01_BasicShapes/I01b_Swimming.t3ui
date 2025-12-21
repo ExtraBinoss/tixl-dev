@@ -90,12 +90,12 @@
     {
       "Id": "d07754a2-4162-4edc-a859-5a5d3fddef08",
       "ChildId": "8ed19911-dace-4057-beef-0f225faf2b66",
-      "Description": "We've seen the [RoundedRect] Operator before. For this example, we can leave all of it's parameters as they are."
+      "Description": "The [RoundedRect] is already set up.\nLeave its parameters unchanged."
     },
     {
       "Id": "da1a107f-3def-4003-a6f0-1342c9c84a32",
       "ChildId": "b3a217e5-e264-4f90-8758-f2a503d6dfcb",
-      "Description": "Instead we're going to focus on the [MirrorRepeat] Operator.\nIn the jack of all trades related to reflecting images along an axis.\nTo reproduce the example below you only have to adjust two of its parameters."
+      "Description": "Focus on the [MirrorRepeat] operator.\nIt reflects images along an axis and is extremely flexible.\nOnly two parameters need adjustment to solve this challenge."
     }
   ]
 }

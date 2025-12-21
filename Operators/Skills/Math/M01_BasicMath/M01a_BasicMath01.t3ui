@@ -60,27 +60,27 @@
     {
       "Id": "c81d310b-d242-4fec-9b77-eac954aa9e64",
       "ChildId": "fd80fdde-824c-4946-815b-6acc418248a1",
-      "Description": "Some people have not to good memories about math because most teachers couldn't give a good reason, why you would need that for.\nIn TiXL working using math is fun and intuitive. This following levels will teach you everything you need to know..."
+      "Description": "Math has a bad reputation. For many people, it felt pointless or confusing at school.\nIn TiXL, math is visual, playful, and actually useful. The following levels will teach everything needed, step by step."
     },
     {
       "Id": "91d3dc49-3ebf-4e81-bfc8-9f0bb9b333ef",
       "ChildId": "d31fd376-18a9-4e89-bbdf-8b8e47dd7feb",
-      "Description": "In TiXL you can use math operators to control parameters and animation.\nThere are different \"types\" of numbers. We will start with float-values and cover other types later..."
+      "Description": "Math operators in TiXL are used to control parameters and animation.\nThere are different number types. We start with float values and explore others later."
     },
     {
       "Id": "add02c1c-ecbf-4d7e-a630-8c42faae0740",
       "ChildId": "d31fd376-18a9-4e89-bbdf-8b8e47dd7feb",
-      "Description": "Connect this op to the [ValueQuiz]."
+      "Description": "Connect this operator to the [ValueQuiz]."
     },
     {
       "Id": "43d4e847-619f-4053-8a07-eefc0db31f42",
       "ChildId": "fd80fdde-824c-4946-815b-6acc418248a1",
-      "Description": "The [ValueQuiz] show a required value and a graph at the bottom.\nTry to find the value, the to solve that goal..."
+      "Description": "The [ValueQuiz] shows a target value and a graph at the bottom.\nFind the correct value to solve the goal."
     },
     {
       "Id": "ebe363a3-df9e-45ef-a7e5-9779db1e2ad4",
       "ChildId": "d31fd376-18a9-4e89-bbdf-8b8e47dd7feb",
-      "Description": "The most basic Operator is [Value].\nYou can edit its parameter with different methods:\n1. Select the Operator and use the Parameter Window.\n2. Drag on the Operator in the graph while holding the CTRL key.\n"
+      "Description": "The most basic operator is [Value].\nYou can change its value in different ways:\n1. Select the operator and use the Parameter Window. 2. Hold Ctrl and drag directly on the operator in the graph."
     }
   ]
 }

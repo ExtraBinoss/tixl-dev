@@ -75,22 +75,22 @@
     {
       "Id": "ca4bd474-4215-477d-ab43-502f03a99e3d",
       "ChildId": "82720834-df78-49a5-8649-e08c57532e22",
-      "Description": "If the shape of the [Sin] Operator is too smooth we can use the [Modulo] Operator to generate a saw shape.\nModulo keeps a value looping so it never grows past a chosen limit and always jumps back to the start when it reaches it."
+      "Description": "If the [Sin] wave is too smooth, [Modulo] can help.\nModulo keeps a value looping. When it reaches a limit, it jumps back to the start.\nThis creates a sharp saw shape."
     },
     {
       "Id": "1b552302-2b05-424f-ae16-483644d4f3ce",
       "ChildId": "d52258cf-1cb9-4351-ab28-b86bdbcf3a08",
-      "Description": "Snap the [Time] to the [Modulo]..."
+      "Description": "Snap [Time] into [Modulo]."
     },
     {
       "Id": "5a6e9afd-1937-4fb4-8596-271bb54bbc8c",
       "ChildId": "82720834-df78-49a5-8649-e08c57532e22",
-      "Description": "Connect the [Modulo] to the [ValueQuiz]."
+      "Description": "Connect [Modulo] to the [ValueQuiz]."
     },
     {
       "Id": "1c95d07d-c34e-4478-81cb-85bbebda7835",
       "ChildId": "82720834-df78-49a5-8649-e08c57532e22",
-      "Description": "Adjust the [Modulo] parameter to match the goal."
+      "Description": "Adjust the parameter to match the target."
     }
   ]
 }

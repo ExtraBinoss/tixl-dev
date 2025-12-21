@@ -91,12 +91,12 @@
     {
       "Id": "2d74cde3-b4c4-419d-9368-78160d2bbd6a",
       "ChildId": "c560820f-fc83-4026-8966-65ab12e90d4b",
-      "Description": "This [RoundedRect] operator might be rotating... But it's so slow that it's barely noticable.\nThat's because TiXL uses degrees for angles and waiting 360 seconds for a complete turn takes a long time."
+      "Description": "The [RoundedRect] is rotating, but very slowly.\nTiXL uses degrees. A full rotation takes 360 seconds at this speed."
     },
     {
       "Id": "c131274a-b1a9-4585-867a-0bf10acf2b79",
       "ChildId": "8a5312ac-7112-413b-a303-3b6ba97ab5ef",
-      "Description": "Maybe we can speed things up by inserting that [Multiply] operator...\nTry dragging it between [Time] and [RoundedRect]."
+      "Description": "Insert a [Multiply] operator between [Time] and [RoundedRect] to speed things up."
     }
   ]
 }

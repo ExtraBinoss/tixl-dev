@@ -89,12 +89,12 @@
   "TourPoints": [
     {
       "Id": "8b490de1-24f8-458e-af65-0f89159f0ef1",
-      "Description": "Combining just a few simple operators can have surprising and unexpected results."
+      "Description": "Even simple operators can create unexpected results when combined."
     },
     {
       "Id": "d192114b-3170-45f5-9391-75b20a464140",
       "ChildId": "5131e282-ba05-4b17-8b84-7915a365f2a7",
-      "Description": "Tip: You might need to use [Time]'s output multiple times...",
+      "Description": "You may need to use the [Time] output more than once.",
       "Style": "Tip"
     }
   ]

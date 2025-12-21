@@ -75,17 +75,17 @@
     {
       "Id": "59c89de4-dff6-4f73-ac06-4ed9d9c5d1db",
       "ChildId": "b4a245fc-4a34-495e-8d52-3c1827490d52",
-      "Description": "You can use the [Sin] operator to create a wave form. (And yes, \"Sine\" would have been a better name...)"
+      "Description": "The [Sin] operator creates a smooth wave shape.\nYes, \"Sine\" would be the proper name."
     },
     {
       "Id": "c0bb0832-5284-4ea0-a8d3-07e06bc74bc5",
       "ChildId": "3f18bcb0-0929-44f7-b948-a8413b0deec6",
-      "Description": "You will need to connect an animated value like this [Time] Operator to get it moving..."
+      "Description": "To animate the wave, connect an animated value like [Time]."
     },
     {
       "Id": "569f9e62-0620-46e4-b6c0-97264fa72338",
       "ChildId": "3f18bcb0-0929-44f7-b948-a8413b0deec6",
-      "Description": "You will need to adjust the Speed Factor parameter to match the goal."
+      "Description": "Adjust the Speed Factor until it matches the goal."
     }
   ]
 }
