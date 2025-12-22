@@ -49,12 +49,12 @@ internal static class MouseWheelPanning
 
         if (m.Msg == WM_MOUSEWHEEL)
         {
-            imgGuiIo.MouseWheel += notches / 10;
+            imgGuiIo.MouseWheel += notches / 2;
             _wheelY += notches;
         }
         else
         {
-            imgGuiIo.MouseWheelH += notches / 10;
+            imgGuiIo.MouseWheelH += notches / 2;
             _wheelX += notches;
         }
 
