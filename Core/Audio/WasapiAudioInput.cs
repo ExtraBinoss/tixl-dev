@@ -187,19 +187,15 @@ public static class WasapiAudioInput
             return length;
         }
         
+        // level is an int32 carrying per-channel level, such as: "0xRRRRLLLL"
+        // convert to M/S, pick mid, and scale it.
+        // more info : https://documentation.help/BASSWASAPI/BASS_WASAPI_GetLevel.html
         var level = BassWasapi.GetLevel();
-        if (level >= 0)
+        if (level != -1) // exactly -1 is a capture error, do not measure it
         {
-            var midLevel = (float)((MathF.Sqrt(2)) * (short)(level & 0xffff + (level >> 16) & 0xffff) / 2);
-            
-            _lastAudioLevel = (float)(level * 0.00001);
-            // _lastAudioLevel = (float) (midLevel / 32768f * 100000);
-            //(float)((int)((long)level * (long)(int.MaxValue - int.MinValue) / 32768 + int.MinValue) * 0.00001);
-
-
+            _lastAudioLevel = (float)(((level & 0xffff) + ((level >> 16) & 0xffff))
+                                      * short.MaxValue * 0.00001);
         }
-        // _lastAudioLevel = (float)(level * 0.00001);
-            // _lastAudioLevel = (float) (midLevel / 32768f * 100000);
 
         var playbackSettings = Playback.Current?.Settings;
         if (playbackSettings == null) 
