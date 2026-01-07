@@ -227,6 +227,12 @@ namespace T3.Editor.Gui.Windows.Utilities
                 string imageOut = Path.Combine(outputDir, $"{fontName}_msdf.png");
                 string fntOut = Path.Combine(outputDir, $"{fontName}_msdf.fnt");
 
+                var progress = new Progress<GeneratorProgress>(p =>
+                {
+                    _generationProgress = (float)p.Proportion;
+                    _progressText = $"Generating: {p.Current}/{p.Total} ({p.GlyphName})";
+                });
+
                 // Run heavy lifting on background thread
                 await Task.Run(() =>
                 {
@@ -248,12 +254,6 @@ namespace T3.Editor.Gui.Windows.Utilities
                     if (!TryPackGlyphs(glyphs, settings, out int finalW, out int finalH))
                         throw new Exception("Packing failed.");
 
-                    var progress = new Progress<GeneratorProgress>(p =>
-                    {
-                        _generationProgress = (float)p.Proportion;
-                        _progressText = $"Generating: {p.Current}/{p.Total} ({p.GlyphName})";
-                    });
-                    
                     var generator = GenerateAtlas(glyphs, finalW, finalH, settings, progress);
 
                     SaveResults(generator, fontGeometry, settings, imageOut, fntOut, finalW, finalH);
