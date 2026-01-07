@@ -216,7 +216,7 @@ namespace T3.Editor.Gui.Windows.Utilities
                 {
                     _statusMessage = "Font file not found";
                     _isStatusError = true;
-                    Log.Warning("Font file not found: " + _fontFilePath);
+                    Log.Error("Font file not found: " + _fontFilePath);
                     return;
                 }
 
