@@ -151,8 +151,14 @@ namespace T3.Editor.Gui.Windows.Utilities
             bool hasFile = !string.IsNullOrEmpty(_fontFilePath) && File.Exists(_fontFilePath);
             if (CustomComponents.DisablableButton("Generate MSDF", hasFile && usagePackage != null && !_isGenerating))
             {
-                // Fire and forget, but safely
-                _ = GenerateAsync(usagePackage!);
+                // Fire and forget, but ensure exceptions are observed and logged
+                GenerateAsync(usagePackage!).ContinueWith(t =>
+                {
+                    if (t.Exception != null)
+                    {
+                        Log.Error("Unhandled exception in MSDF generation: " + t.Exception);
+                    }
+                }, TaskContinuationOptions.OnlyOnFaulted);
             }
             
             if (_isGenerating)
