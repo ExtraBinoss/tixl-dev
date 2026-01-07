@@ -288,9 +288,9 @@ namespace T3.Editor.Gui.Windows.Utilities
                            Strategy = _useRecommended ? ColoringStrategy.Simple : _coloringStrategy,
                            ErrorCorrection = _useRecommended ? ErrorCorrectionMode.Indiscriminate : _errorCorrection,
                            Overlap = _useRecommended ? true : _overlap,
-                           OuterPadding = _useRecommended ? new MsdfAtlasGen.Padding(0, 0, 0, 0) 
-                                                          : new MsdfAtlasGen.Padding((int)_outerPadding.X, (int)_outerPadding.Z, (int)_outerPadding.W, (int)_outerPadding.Y) // Top, Bottom, Left, Right
-                       };
+                            OuterPadding = _useRecommended ? new MsdfAtlasGen.Padding(0, 0, 0, 0)
+                                                           : new MsdfAtlasGen.Padding((int)_outerPadding.W, (int)_outerPadding.Z, (int)_outerPadding.Y, (int)_outerPadding.X) // Left, Bottom, Right, Top
+                        };
         }
 
         private static string PrepareOutputDirectory(SymbolPackage package)
@@ -381,7 +381,7 @@ namespace T3.Editor.Gui.Windows.Utilities
                                ImageType.Msdf,
                                finalW, finalH,
                                settings.FontSize,
-                               settings.RangeValue, // distanceRange is rangeValue based on previous code
+                               settings.RangeValue,
                                Path.GetFileName(imageOut),
                                fntOut,
                                metrics,
