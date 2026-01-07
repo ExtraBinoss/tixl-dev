@@ -187,12 +187,9 @@ namespace T3.Editor.Gui.Windows.Utilities
                 var color = _isStatusError ? UiColors.StatusError : UiColors.StatusAutomated;
                 ImGui.TextColored(color, _statusMessage);
                 
-                if (!_isStatusError && !_isGenerating && !string.IsNullOrEmpty(_lastOutputDir))
+                if (!_isStatusError && !_isGenerating && !string.IsNullOrEmpty(_lastOutputDir) && ImGui.Button("Open Output Folder"))
                 {
-                    if (ImGui.Button("Open Output Folder"))
-                    {
-                         CoreUi.Instance.OpenWithDefaultApplication(_lastOutputDir);
-                    }
+                    CoreUi.Instance.OpenWithDefaultApplication(_lastOutputDir);
                 }
             }
         }
@@ -293,9 +290,9 @@ namespace T3.Editor.Gui.Windows.Utilities
                            AngleThreshold = _useRecommended ? 3.0 : (double)_angleThreshold,
                            Strategy = _useRecommended ? ColoringStrategy.Simple : _coloringStrategy,
                            ErrorCorrection = _useRecommended ? ErrorCorrectionMode.Indiscriminate : _errorCorrection,
-                           Overlap = _useRecommended ? true : _overlap,
-                            OuterPadding = _useRecommended ? new MsdfAtlasGen.Padding(0, 0, 0, 0)
-                                                           : new MsdfAtlasGen.Padding((int)_outerPadding.W, (int)_outerPadding.Z, (int)_outerPadding.Y, (int)_outerPadding.X) // Left, Bottom, Right, Top
+                           Overlap = _useRecommended || _overlap,
+                           OuterPadding = _useRecommended ? new MsdfAtlasGen.Padding(0, 0, 0, 0)
+                                                          : new MsdfAtlasGen.Padding((int)_outerPadding.W, (int)_outerPadding.Z, (int)_outerPadding.Y, (int)_outerPadding.X) // Left, Bottom, Right, Top
                         };
         }
 
