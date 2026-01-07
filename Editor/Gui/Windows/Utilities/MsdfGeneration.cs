@@ -409,12 +409,50 @@ namespace T3.Editor.Gui.Windows.Utilities
             public MsdfAtlasGen.Padding OuterPadding;
         }
 
+        private static bool IsPathUnderFolder(string fullPath, string? folderPath)
+        {
+            if (string.IsNullOrEmpty(fullPath) || string.IsNullOrEmpty(folderPath))
+                return false;
+
+            string fullFolderPath;
+            try
+            {
+                fullFolderPath = Path.GetFullPath(folderPath);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+
+            var separatorString = Path.DirectorySeparatorChar.ToString();
+            if (!fullFolderPath.EndsWith(separatorString, StringComparison.Ordinal))
+            {
+                fullFolderPath += separatorString;
+            }
+
+            return fullPath.StartsWith(fullFolderPath, StringComparison.OrdinalIgnoreCase);
+        }
+
         private static SymbolPackage? GetPackageContainingPath(string? fontPath)
         {
-            if (string.IsNullOrEmpty(fontPath))
+            if (string.IsNullOrWhiteSpace(fontPath))
                 return null;
 
-            return SymbolPackage.AllPackages.FirstOrDefault(p => fontPath.Contains(p.Folder) || fontPath.Contains(p.ResourcesFolder));
+            string fullFontPath;
+            try
+            {
+                fullFontPath = Path.GetFullPath(fontPath);
+            }
+            catch (Exception)
+            {
+                Log.Error("Failed to get full path for font path: " + fontPath);
+                return null;
+            }
+
+            var package = SymbolPackage.AllPackages.FirstOrDefault(p =>
+                                                                       IsPathUnderFolder(fullFontPath, p.Folder) ||
+                                                                       IsPathUnderFolder(fullFontPath, p.ResourcesFolder));
+            return package;
         }
 
         private static string? _fontFilePath = "";
