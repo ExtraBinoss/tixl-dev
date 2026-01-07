@@ -13,13 +13,30 @@ using T3.Editor.UiModel.ProjectHandling;
 using T3.Editor.Gui.Styling;
 using T3.Editor.Gui.UiHelpers;
 using Msdfgen.Extensions;
+using System.Threading.Tasks;
 
 namespace T3.Editor.Gui.Windows.Utilities
 {
     public static class MsdfGeneration
     {
+        private static bool _useRecommended = true;
+
+        private static float _generationProgress;
+        private static string _progressText = "";
+        private static bool _isGenerating;
+
         public static void Draw()
         {
+            if (_isGenerating)
+            {
+                ImGui.ProgressBar(_generationProgress, new System.Numerics.Vector2(-1, 0), "");
+                ImGui.Text(_progressText);
+                FormInputs.AddVerticalSpace();
+                
+                // Disable inputs during generation
+                ImGui.BeginDisabled();
+            }
+
             FormInputs.SetIndent(50);
             FormInputs.AddSectionHeader("MSDF Generation");
             CustomComponents.HelpText("Generate MSDF fonts from .ttf files using MSDF-Sharp.\nChecks for 'Resources/fonts' and outputs there.");
@@ -101,9 +118,15 @@ namespace T3.Editor.Gui.Windows.Utilities
             }
 
             bool hasFile = !string.IsNullOrEmpty(_fontFilePath) && File.Exists(_fontFilePath);
-            if (CustomComponents.DisablableButton("Generate MSDF", hasFile && usagePackage != null))
+            if (CustomComponents.DisablableButton("Generate MSDF", hasFile && usagePackage != null && !_isGenerating))
             {
-                Generate(usagePackage!);
+                // Fire and forget, but safely
+                _ = GenerateAsync(usagePackage!);
+            }
+            
+            if (_isGenerating)
+            {
+                ImGui.EndDisabled();
             }
             
             if (!hasFile || usagePackage == null)
@@ -124,10 +147,14 @@ namespace T3.Editor.Gui.Windows.Utilities
             _selectedPackage = null;
         }
 
-        private static void Generate(SymbolPackage package)
+        private static async Task GenerateAsync(SymbolPackage package)
         {
             _statusMessage = "";
             _isStatusError = false;
+            _isGenerating = true;
+            _generationProgress = 0;
+            _progressText = "Starting generation...";
+
             try
             {
                 if (string.IsNullOrEmpty(_fontFilePath) || !File.Exists(_fontFilePath))
@@ -145,32 +172,41 @@ namespace T3.Editor.Gui.Windows.Utilities
                 string imageOut = Path.Combine(outputDir, $"{fontName}_msdf.png");
                 string fntOut = Path.Combine(outputDir, $"{fontName}_msdf.fnt");
 
-                Log.Debug($"Initializing FreeType for {settings.FontPath}...");
-                using var ft = FreetypeHandle.Initialize();
-                if (ft == null)
+                // Run heavy lifting on background thread
+                await Task.Run(() =>
                 {
-                    Log.Error("Failed to initialize FreeType.");
-                    return;
-                }
+                    Log.Debug($"Initializing FreeType for {settings.FontPath}...");
+                    using var ft = FreetypeHandle.Initialize();
+                    if (ft == null)
+                    {
+                        throw new Exception("Failed to initialize FreeType.");
+                    }
 
-                using var fontHandle = FontHandle.LoadFont(ft, settings.FontPath);
-                if (fontHandle == null)
-                {
-                    Log.Error("Failed to load font.");
-                    return;
-                }
+                    using var fontHandle = FontHandle.LoadFont(ft, settings.FontPath);
+                    if (fontHandle == null)
+                    {
+                        throw new Exception("Failed to load font.");
+                    }
 
-                var fontGeometry = SetupFontGeometry(fontHandle, fontName, settings);
-                var glyphs = fontGeometry.GetGlyphs().Glyphs.ToArray();
+                    var fontGeometry = SetupFontGeometry(fontHandle, fontName, settings);
+                    var glyphs = fontGeometry.GetGlyphs().Glyphs.ToArray();
 
-                if (!TryPackGlyphs(glyphs, settings, out int finalW, out int finalH))
-                    return;
+                    if (!TryPackGlyphs(glyphs, settings, out int finalW, out int finalH))
+                        throw new Exception("Packing failed.");
 
-                Log.Debug($"Generating Atlas ({finalW}x{finalH})...");
-                var generator = GenerateAtlas(glyphs, finalW, finalH, settings);
+                    Log.Debug($"Generating Atlas ({finalW}x{finalH})...");
+                    
+                    var progress = new Progress<GeneratorProgress>(p =>
+                    {
+                        _generationProgress = (float)p.Proportion;
+                        _progressText = $"Generating: {p.Current}/{p.Total} ({p.GlyphName})";
+                    });
+                    
+                    var generator = GenerateAtlas(glyphs, finalW, finalH, settings, progress);
 
-                Log.Debug($"Saving Results to {outputDir}...");
-                SaveResults(generator, fontGeometry, settings, imageOut, fntOut, finalW, finalH);
+                    Log.Debug($"Saving Results to {outputDir}...");
+                    SaveResults(generator, fontGeometry, settings, imageOut, fntOut, finalW, finalH);
+                });
 
                 _statusMessage = $"Success! Saved to {Path.GetFileName(imageOut)}";
                 _isStatusError = false;
@@ -182,6 +218,12 @@ namespace T3.Editor.Gui.Windows.Utilities
                 _isStatusError = true;
                 Log.Error($"An error occurred during MSDF generation: {e.Message}");
                 Log.Error(e.StackTrace ?? string.Empty);
+            }
+            finally
+            {
+                _isGenerating = false;
+                _progressText = "";
+                _generationProgress = 0;
             }
         }
 
@@ -246,7 +288,7 @@ namespace T3.Editor.Gui.Windows.Utilities
             return true;
         }
 
-        private static ImmediateAtlasGenerator<float> GenerateAtlas(GlyphGeometry[] glyphs, int width, int height, GenerationSettings settings)
+        private static ImmediateAtlasGenerator<float> GenerateAtlas(GlyphGeometry[] glyphs, int width, int height, GenerationSettings settings, IProgress<GeneratorProgress> progress)
         {
             var generatorConfig = new MSDFGeneratorConfig(true,
                                                           new ErrorCorrectionConfig(ErrorCorrectionConfig.DistanceErrorCorrectionMode.INDISCRIMINATE,
@@ -260,7 +302,7 @@ namespace T3.Editor.Gui.Windows.Utilities
             }, 3);
 
             generator.SetThreadCount(Environment.ProcessorCount);
-            generator.Generate(glyphs);
+            generator.Generate(glyphs, progress);
             return generator;
         }
 
@@ -306,7 +348,6 @@ namespace T3.Editor.Gui.Windows.Utilities
         private static SymbolPackage? _selectedPackage;
         private static string _statusMessage = "";
         private static bool _isStatusError = false;
-        private static bool _useRecommended = true;
         private static float _fontSize = 90;
         private static int _width = 1024;
         private static int _height = 1024;
