@@ -701,7 +701,7 @@ internal static class FormInputs
         DrawInputLabel(label);
 
         var isFilePickerVisible = showFilePicker != FileOperations.FilePickerTypes.None;
-        float spaceForFilePicker = isFilePickerVisible ? 40 : 0;
+        float spaceForFilePicker = isFilePickerVisible ? 70 * T3Ui.UiScaleFactor : 0;
         var inputSize = GetAvailableInputSize(null, false, true, spaceForFilePicker);
         ImGui.SetNextItemWidth(inputSize.X);
 
