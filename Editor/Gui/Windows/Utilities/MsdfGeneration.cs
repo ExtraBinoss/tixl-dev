@@ -112,14 +112,9 @@ namespace T3.Editor.Gui.Windows.Utilities
                 {
                     // Try to use the currently valid project from the focused view
                     var focusedProject = ProjectView.Focused?.OpenedProject.Package;
-                    if (focusedProject != null && !focusedProject.IsReadOnly)
-                    {
-                        _selectedPackage = focusedProject;
-                    }
-                    else
-                    {
-                        _selectedPackage = editablePackages.FirstOrDefault();
-                    }
+                    _selectedPackage = focusedProject != null && !focusedProject.IsReadOnly
+                                           ? focusedProject
+                                           : editablePackages.FirstOrDefault();
                 }
 
                 var packageNames = editablePackages.Select(p => p.DisplayName).OrderBy(n => n);
