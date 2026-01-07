@@ -23,6 +23,24 @@ namespace T3.Editor.Gui.Windows.Utilities
     {
         private static bool _useRecommended = true;
 
+        private enum ColoringStrategy
+        {
+            Simple,
+            InkTrap
+        }
+        
+        private enum ErrorCorrectionMode
+        {
+            Disabled,
+            Indiscriminate,
+            EdgeOnly
+        }
+
+        private static ColoringStrategy _coloringStrategy = ColoringStrategy.Simple;
+        private static ErrorCorrectionMode _errorCorrection = ErrorCorrectionMode.Indiscriminate;
+        private static bool _overlap = true;
+        private static Vector4 _outerPadding = Vector4.Zero;
+
         private static float _generationProgress;
         private static string _progressText = "";
         private static bool _isGenerating;
@@ -54,6 +72,19 @@ namespace T3.Editor.Gui.Windows.Utilities
                 FormInputs.AddInt("Spacing", ref _spacing, 0, 32, 1);
                 FormInputs.AddFloat("Range", ref _rangeValue, 0.1f, 10, 0.1f);
                 FormInputs.AddFloat("Angle Threshold", ref _angleThreshold, 0, 6, 0.1f);
+                
+                FormInputs.AddEnumDropdown(ref _coloringStrategy, "Coloring Strategy");
+                FormInputs.AddEnumDropdown(ref _errorCorrection, "Error Correction");
+                FormInputs.AddCheckBox("Overlap Support", ref _overlap);
+                
+                FormInputs.DrawFieldSetHeader("Outer Padding");
+                var padding = _outerPadding;
+                var changed = FormInputs.AddFloat("Top", ref padding.X, 0, 100, 1);
+                changed |= FormInputs.AddFloat("Right", ref padding.Y, 0, 100, 1);
+                changed |= FormInputs.AddFloat("Bottom", ref padding.Z, 0, 100, 1);
+                changed |= FormInputs.AddFloat("Left", ref padding.W, 0, 100, 1);
+                if (changed) _outerPadding = padding;
+
                 FormInputs.ApplyIndent();
             }
 
@@ -256,7 +287,12 @@ namespace T3.Editor.Gui.Windows.Utilities
                            MiterLimit = _useRecommended ? 3.0 : (double)_miterLimit,
                            Spacing = _useRecommended ? 2 : _spacing,
                            RangeValue = _useRecommended ? 2.0 : (double)_rangeValue,
-                           AngleThreshold = _useRecommended ? 3.0 : (double)_angleThreshold
+                           AngleThreshold = _useRecommended ? 3.0 : (double)_angleThreshold,
+                           Strategy = _useRecommended ? ColoringStrategy.Simple : _coloringStrategy,
+                           ErrorCorrection = _useRecommended ? ErrorCorrectionMode.Indiscriminate : _errorCorrection,
+                           Overlap = _useRecommended ? true : _overlap,
+                           OuterPadding = _useRecommended ? new MsdfAtlasGen.Padding(0, 0, 0, 0) 
+                                                          : new MsdfAtlasGen.Padding((int)_outerPadding.X, (int)_outerPadding.Z, (int)_outerPadding.W, (int)_outerPadding.Y) // Top, Bottom, Left, Right
                        };
         }
 
@@ -273,13 +309,20 @@ namespace T3.Editor.Gui.Windows.Utilities
         private static FontGeometry SetupFontGeometry(FontHandle fontHandle, string fontName, GenerationSettings settings)
         {
             var fontGeometry = new FontGeometry();
-            var charset = Charset.ASCII;
-            fontGeometry.LoadCharset(fontHandle, settings.FontSize, charset);
+            fontGeometry.LoadCharset(fontHandle, settings.FontSize, Charset.ASCII);
             fontGeometry.SetName(fontName);
 
             foreach (var glyph in fontGeometry.GetGlyphs().Glyphs)
             {
-                glyph.EdgeColoring(Msdfgen.EdgeColoring.EdgeColoringSimple, settings.AngleThreshold, 0);
+                switch (settings.Strategy)
+                {
+                    case ColoringStrategy.Simple:
+                        glyph.EdgeColoring(Msdfgen.EdgeColoring.EdgeColoringSimple, settings.AngleThreshold, 0);
+                        break;
+                    case ColoringStrategy.InkTrap:
+                        glyph.EdgeColoring(Msdfgen.EdgeColoring.EdgeColoringInkTrap, settings.AngleThreshold, 0);
+                        break;
+                }
             }
 
             return fontGeometry;
@@ -308,8 +351,16 @@ namespace T3.Editor.Gui.Windows.Utilities
 
         private static ImmediateAtlasGenerator<float> GenerateAtlas(GlyphGeometry[] glyphs, int width, int height, GenerationSettings settings, IProgress<GeneratorProgress> progress)
         {
-            var generatorConfig = new MSDFGeneratorConfig(true,
-                                                          new ErrorCorrectionConfig(ErrorCorrectionConfig.DistanceErrorCorrectionMode.INDISCRIMINATE,
+            var errorMode = settings.ErrorCorrection switch
+            {
+                ErrorCorrectionMode.Disabled => ErrorCorrectionConfig.DistanceErrorCorrectionMode.DISABLED,
+                ErrorCorrectionMode.Indiscriminate => ErrorCorrectionConfig.DistanceErrorCorrectionMode.INDISCRIMINATE,
+                ErrorCorrectionMode.EdgeOnly => ErrorCorrectionConfig.DistanceErrorCorrectionMode.EDGE_ONLY,
+                _ => ErrorCorrectionConfig.DistanceErrorCorrectionMode.INDISCRIMINATE
+            };
+
+            var generatorConfig = new MSDFGeneratorConfig(settings.Overlap,
+                                                          new ErrorCorrectionConfig(errorMode,
                                                                                       ErrorCorrectionConfig.DistanceCheckMode.CHECK_DISTANCE_ALWAYS));
 
             var generator = new ImmediateAtlasGenerator<float>(width, height, (bitmap, glyph, attrs) =>
@@ -338,7 +389,7 @@ namespace T3.Editor.Gui.Windows.Utilities
                                fntOut,
                                metrics,
                                YAxisOrientation.Upward,
-                               new MsdfAtlasGen.Padding(0, 0, 0, 0),
+                               settings.OuterPadding,
                                settings.Spacing);
         }
 
@@ -352,6 +403,10 @@ namespace T3.Editor.Gui.Windows.Utilities
             public int Spacing;
             public double RangeValue;
             public double AngleThreshold;
+            public ColoringStrategy Strategy;
+            public ErrorCorrectionMode ErrorCorrection;
+            public bool Overlap;
+            public MsdfAtlasGen.Padding OuterPadding;
         }
 
         private static SymbolPackage? GetPackageContainingPath(string? fontPath)
