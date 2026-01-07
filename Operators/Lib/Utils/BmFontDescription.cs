@@ -27,8 +27,6 @@ internal sealed class BmFontDescription
                 Log.Error("Failed to load font " + filepath);
                 return false;
             }
-            
-            // Warn if size is 0 - this will cause rendering issues
             if (bmFont.Info?.Size <= 0)
             {
                 Log.Warning($"Font size is {bmFont.Info.Size} in font file '{filepath}' - this will cause text rendering issues! Please check the font file's <info size=...> attribute.");
