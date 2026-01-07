@@ -14,6 +14,7 @@ using T3.Editor.Gui.Styling;
 using T3.Editor.Gui.UiHelpers;
 using Msdfgen.Extensions;
 using System.Threading.Tasks;
+using T3.Editor.UiModel;
 using T3.Core.SystemUi;
 
 namespace T3.Editor.Gui.Windows.Utilities
@@ -28,10 +29,10 @@ namespace T3.Editor.Gui.Windows.Utilities
 
         public static void Draw()
         {
-
             FormInputs.SetIndent(50);
+
             FormInputs.AddSectionHeader("MSDF Generation");
-            CustomComponents.HelpText("Generate MSDF fonts from .ttf files using MSDF-Sharp.\nChecks for 'Resources/fonts' and outputs there.");
+            CustomComponents.HelpText("Generate MSDF fonts from .ttf files using MSDF-Sharp.\nChecks for 'Resources/fonts'.");
             FormInputs.AddVerticalSpace();
             
             if (_isGenerating)
@@ -59,21 +60,24 @@ namespace T3.Editor.Gui.Windows.Utilities
             FormInputs.AddVerticalSpace();
 
             FormInputs.AddVerticalSpace();
-
+            FormInputs.SetIndent(90);
+            
             var internalPackage = GetPackageContainingPath(_fontFilePath);
             SymbolPackage? usagePackage = null;
 
             if (internalPackage != null)
             {
                 // Lock to the package containing the file
-                ImGui.AlignTextToFramePadding();
-                ImGui.Text($"Target Project: {internalPackage.DisplayName}");
+                string name = internalPackage.DisplayName;
+                ImGui.BeginDisabled();
+                if (FormInputs.AddStringInput("Target Project", ref name)) { }
+                ImGui.EndDisabled();
                 usagePackage = internalPackage;
             }
             else
             {
                 // Allow selection for external files
-                var editablePackages = SymbolPackage.AllPackages.Where(p => !p.IsReadOnly).OrderBy(p => p.DisplayName).ToList();
+                var editablePackages = EditableSymbolProject.AllProjects.ToList();
                 
                 // Initialize default selection if needed
                 if (_selectedPackage == null || !editablePackages.Contains(_selectedPackage))
@@ -110,7 +114,9 @@ namespace T3.Editor.Gui.Windows.Utilities
                 
                 if (usagePackage == null)
                 {
-                    ImGui.TextColored(UiColors.StatusError, "Target Project: Invalid or None selected.");
+                    ImGui.Indent(150);
+                    ImGui.TextColored(UiColors.StatusError, "Invalid or No Project selected.");
+                    ImGui.Unindent(150);
                 }
             }
 
