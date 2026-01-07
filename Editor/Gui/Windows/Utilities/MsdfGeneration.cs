@@ -390,20 +390,20 @@ namespace T3.Editor.Gui.Windows.Utilities
                                settings.Spacing);
         }
 
-        private struct GenerationSettings
+        private sealed record GenerationSettings
         {
-            public string FontPath;
-            public double FontSize;
-            public int Width;
-            public int Height;
-            public double MiterLimit;
-            public int Spacing;
-            public double RangeValue;
-            public double AngleThreshold;
-            public ColoringStrategy Strategy;
-            public ErrorCorrectionMode ErrorCorrection;
-            public bool Overlap;
-            public MsdfAtlasGen.Padding OuterPadding;
+            public string FontPath { get; init; } = string.Empty;
+            public double FontSize { get; init; }
+            public int Width { get; init; }
+            public int Height { get; init; }
+            public double MiterLimit { get; init; }
+            public int Spacing { get; init; }
+            public double RangeValue { get; init; }
+            public double AngleThreshold { get; init; }
+            public ColoringStrategy Strategy { get; init; }
+            public ErrorCorrectionMode ErrorCorrection { get; init; }
+            public bool Overlap { get; init; }
+            public MsdfAtlasGen.Padding OuterPadding { get; init; } = new(0, 0, 0, 0);
         }
 
         private static bool IsPathUnderFolder(string fullPath, string? folderPath)
