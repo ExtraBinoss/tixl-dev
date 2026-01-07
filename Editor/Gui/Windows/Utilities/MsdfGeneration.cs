@@ -98,7 +98,7 @@ namespace T3.Editor.Gui.Windows.Utilities
                 // Lock to the package containing the file
                 string name = internalPackage.DisplayName;
                 ImGui.BeginDisabled();
-                if (FormInputs.AddStringInput("Target Project", ref name)) { }
+                FormInputs.AddStringInput("Target Project", ref name);
                 ImGui.EndDisabled();
                 usagePackage = internalPackage;
             }
