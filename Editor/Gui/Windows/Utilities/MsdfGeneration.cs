@@ -122,10 +122,10 @@ namespace T3.Editor.Gui.Windows.Utilities
                     }
                 }
 
-                var packageNames = editablePackages.Select(p => p.DisplayName).OrderBy(n => n).ToList();
+                var packageNames = editablePackages.Select(p => p.DisplayName).OrderBy(n => n);
                 string selectedName = _selectedPackage?.DisplayName ?? "";
 
-                if (FormInputs.AddStringInputWithSuggestions("Target Project", ref selectedName, packageNames.AsEnumerable().OrderBy(n => n), "Select Project"))
+                if (FormInputs.AddStringInputWithSuggestions("Target Project", ref selectedName, packageNames, "Select Project"))
                 {
                     _selectedPackage = editablePackages.FirstOrDefault(p => p.DisplayName == selectedName);
                 }
