@@ -47,7 +47,7 @@ namespace T3.Editor.Gui.Windows.Utilities
 
         public static void Draw()
         {
-            FormInputs.SetIndent(50);
+            FormInputs.SetIndent(50 * T3Ui.UiScaleFactor);
 
             FormInputs.AddSectionHeader("MSDF Generation");
             CustomComponents.HelpText("Generate MSDF fonts from .ttf files using MSDF-Sharp.\nChecks for 'Resources/fonts'.");
@@ -64,7 +64,7 @@ namespace T3.Editor.Gui.Windows.Utilities
 
             if (!_useRecommended)
             {
-                FormInputs.SetIndent(120);
+                FormInputs.SetIndent(100 * T3Ui.UiScaleFactor);
                 FormInputs.AddFloat("Size", ref _fontSize, 1, 500, 1);
                 FormInputs.AddInt("Width", ref _width, 128, 4096, 128);
                 FormInputs.AddInt("Height", ref _height, 128, 4096, 128);
@@ -88,7 +88,7 @@ namespace T3.Editor.Gui.Windows.Utilities
                 FormInputs.ApplyIndent();
             }
             FormInputs.AddVerticalSpace();
-            FormInputs.SetIndent(90);        
+            FormInputs.SetIndent(90 * T3Ui.UiScaleFactor);        
     
             var internalPackage = GetPackageContainingPath(_fontFilePath);
             SymbolPackage? usagePackage = null;
@@ -142,9 +142,9 @@ namespace T3.Editor.Gui.Windows.Utilities
                 
                 if (usagePackage == null)
                 {
-                    ImGui.Indent(150);
+                    ImGui.Indent(150 * T3Ui.UiScaleFactor);
                     ImGui.TextColored(UiColors.StatusError, "Invalid or No Project selected.");
-                    ImGui.Unindent(150);
+                    ImGui.Unindent(150 * T3Ui.UiScaleFactor);
                 }
             }
 
