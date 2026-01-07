@@ -9,6 +9,7 @@ using MsdfAtlasGen;
 using T3.Core.Logging;
 using T3.Core.Model;
 using T3.Editor.Gui.Input;
+using T3.Editor.UiModel.ProjectHandling;
 using T3.Editor.Gui.Styling;
 using T3.Editor.Gui.UiHelpers;
 using Msdfgen.Extensions;
@@ -19,10 +20,11 @@ namespace T3.Editor.Gui.Windows.Utilities
     {
         public static void Draw()
         {
+            FormInputs.SetIndent(50);
             FormInputs.AddSectionHeader("MSDF Generation");
             CustomComponents.HelpText("Generate MSDF fonts from .ttf files using MSDF-Sharp.\nChecks for 'Resources/fonts' and outputs there.");
             FormInputs.AddVerticalSpace();
-
+            
             FormInputs.AddFilePicker("Font File", ref _fontFilePath, null, null, "Select .ttf file", FileOperations.FilePickerTypes.File);
 
             FormInputs.AddCheckBox("Use Recommended Settings", ref _useRecommended);
@@ -59,23 +61,42 @@ namespace T3.Editor.Gui.Windows.Utilities
                 // Allow selection for external files
                 var editablePackages = SymbolPackage.AllPackages.Where(p => !p.IsReadOnly).OrderBy(p => p.DisplayName).ToList();
                 
+                // Initialize default selection if needed
                 if (_selectedPackage == null || !editablePackages.Contains(_selectedPackage))
                 {
-                   _selectedPackage = editablePackages.FirstOrDefault();
+                    // Try to use the currently valid project from the focused view
+                    var focusedProject = ProjectView.Focused?.OpenedProject.Package;
+                    if (focusedProject != null && !focusedProject.IsReadOnly)
+                    {
+                        _selectedPackage = focusedProject;
+                    }
+                    else
+                    {
+                        _selectedPackage = editablePackages.FirstOrDefault();
+                    }
                 }
 
-                if (_selectedPackage != null)
+                var packageNames = editablePackages.Select(p => p.DisplayName).OrderBy(n => n).ToList();
+                string selectedName = _selectedPackage?.DisplayName ?? "";
+
+                if (FormInputs.AddStringInputWithSuggestions("Target Project", ref selectedName, packageNames.AsEnumerable().OrderBy(n => n), "Select Project"))
                 {
-                    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-                    if (FormInputs.AddDropdown(ref _selectedPackage, editablePackages, "Target Project", p => p.DisplayName))
-                    {
-                        // Selection handled by helper
-                    }
-                    usagePackage = _selectedPackage;
+                    _selectedPackage = editablePackages.FirstOrDefault(p => p.DisplayName == selectedName);
                 }
-                else
+                
+                // If the user typed a valid name but we missed it (e.g. didn't hit enter but clicked away, or typed perfectly), try to resolve
+                if (_selectedPackage == null || _selectedPackage.DisplayName != selectedName)
                 {
-                    ImGui.TextColored(UiColors.StatusError, "Target Project: No editable projects found to save to.");
+                     var match = editablePackages.FirstOrDefault(p => p.DisplayName == selectedName);
+                     if (match != null)
+                        _selectedPackage = match;
+                }
+
+                usagePackage = _selectedPackage;
+                
+                if (usagePackage == null)
+                {
+                    ImGui.TextColored(UiColors.StatusError, "Target Project: Invalid or None selected.");
                 }
             }
 
@@ -85,11 +106,22 @@ namespace T3.Editor.Gui.Windows.Utilities
                 Generate(usagePackage!);
             }
             
+            if (!hasFile || usagePackage == null)
+            {
+                string reason = !hasFile ? "Please select a valid .ttf font file." : "Please select a target project.";
+                CustomComponents.TooltipForLastItem(reason);
+            }
+            
             if (!string.IsNullOrEmpty(_statusMessage))
             {
                 var color = _isStatusError ? UiColors.StatusError : UiColors.StatusAutomated;
                 ImGui.TextColored(color, _statusMessage);
             }
+        }
+
+        public static void RefreshSelection()
+        {
+            _selectedPackage = null;
         }
 
         private static void Generate(SymbolPackage package)
@@ -106,30 +138,14 @@ namespace T3.Editor.Gui.Windows.Utilities
                     return;
                 }
 
-                string fontPath = _fontFilePath;
-                // Use defaults if recommended is checked
-                // Defaults: -size 90 -dimensions 1024 1024 -spacing 2 -miterlimit 3.0 -range 2.0 -angle 3.0
-                double fontSize = _useRecommended ? 90.0 : (double)_fontSize;
-                int width = _useRecommended ? 1024 : _width;
-                int height = _useRecommended ? 1024 : _height;
-                double miterLimit = _useRecommended ? 3.0 : (double)_miterLimit;
-                int spacing = _useRecommended ? 2 : _spacing;
-                double rangeValue = _useRecommended ? 2.0 : (double)_rangeValue;
-                double angleThreshold = _useRecommended ? 3.0 : (double)_angleThreshold;
-
-                var range = new Msdfgen.Range(rangeValue);
-
-                string outputDir = Path.Combine(package.ResourcesFolder, "fonts");
-                if (!Directory.Exists(outputDir))
-                {
-                    Directory.CreateDirectory(outputDir);
-                }
-
-                string fontName = Path.GetFileNameWithoutExtension(fontPath);
+                var settings = GetSettings();
+                string outputDir = PrepareOutputDirectory(package);
+                string fontName = Path.GetFileNameWithoutExtension(settings.FontPath);
+                
                 string imageOut = Path.Combine(outputDir, $"{fontName}_msdf.png");
                 string fntOut = Path.Combine(outputDir, $"{fontName}_msdf.fnt");
 
-                Log.Debug($"Initializing FreeType for {fontPath}...");
+                Log.Debug($"Initializing FreeType for {settings.FontPath}...");
                 using var ft = FreetypeHandle.Initialize();
                 if (ft == null)
                 {
@@ -137,81 +153,24 @@ namespace T3.Editor.Gui.Windows.Utilities
                     return;
                 }
 
-                using var fontHandle = FontHandle.LoadFont(ft, fontPath);
+                using var fontHandle = FontHandle.LoadFont(ft, settings.FontPath);
                 if (fontHandle == null)
                 {
                     Log.Error("Failed to load font.");
                     return;
                 }
 
-                var fontGeometry = new FontGeometry();
-                var charset = Charset.ASCII;
-                fontGeometry.LoadCharset(fontHandle, fontSize, charset);
-                fontGeometry.SetName(fontName);
-
-                foreach (var glyph in fontGeometry.GetGlyphs().Glyphs)
-                {
-                    glyph.EdgeColoring(Msdfgen.EdgeColoring.EdgeColoringSimple, angleThreshold, 0);
-                }
-
+                var fontGeometry = SetupFontGeometry(fontHandle, fontName, settings);
                 var glyphs = fontGeometry.GetGlyphs().Glyphs.ToArray();
-                var packer = new TightAtlasPacker();
-                packer.SetDimensions(width, height);
-                packer.SetMiterLimit(miterLimit);
-                packer.SetSpacing(spacing);
-                packer.SetPixelRange(range);
 
-                int packResult = packer.Pack(glyphs);
-                if (packResult < 0)
-                {
-                    Log.Error("Packing failed!");
+                if (!TryPackGlyphs(glyphs, settings, out int finalW, out int finalH))
                     return;
-                }
 
-                packer.GetDimensions(out int finalW, out int finalH);
-                Log.Debug($"Packed Dimensions: {finalW}x{finalH}");
+                Log.Debug($"Generating Atlas ({finalW}x{finalH})...");
+                var generator = GenerateAtlas(glyphs, finalW, finalH, settings);
 
-                // Generator Config
-                // -coloringstrategy simple (already done in loop above)
-                // -errorcorrection indiscriminate
-                var generatorConfig = new MSDFGeneratorConfig(true,
-                    new ErrorCorrectionConfig(
-                        ErrorCorrectionConfig.DistanceErrorCorrectionMode.INDISCRIMINATE,
-                        ErrorCorrectionConfig.DistanceCheckMode.CHECK_DISTANCE_ALWAYS
-                    )
-                );
-
-                var generator = new ImmediateAtlasGenerator<float>(finalW, finalH, (bitmap, glyph, attrs) =>
-                {
-                    var proj = glyph.GetBoxProjection();
-                    var gRange = glyph.GetBoxRange();
-                    MsdfGenerator.GenerateMSDF(bitmap, glyph.GetShape()!, proj, gRange, generatorConfig);
-                }, 3);
-
-                generator.SetThreadCount(Environment.ProcessorCount);
-                generator.Generate(glyphs);
-
-                Log.Debug($"Saving Atlas to {imageOut}...");
-                ImageSaver.Save(generator.AtlasStorage.Bitmap, imageOut);
-
-                Log.Debug($"Exporting FNT to {fntOut}...");
-                var metrics = fontGeometry.GetMetrics();
-                double distanceRange = range.Upper - range.Lower;
-
-                // FntExporter.Export parameters might vary depending on exact version, but based on user snippet:
-                FntExporter.Export(
-                    new[] { fontGeometry },
-                    ImageType.Msdf,
-                    finalW, finalH,
-                    fontSize,
-                    distanceRange,
-                    Path.GetFileName(imageOut), // Texture filename in FNT (relative)
-                    fntOut,
-                    metrics,
-                    YAxisOrientation.Upward,
-                    new MsdfAtlasGen.Padding(0, 0, 0, 0),
-                    spacing
-                );
+                Log.Debug($"Saving Results to {outputDir}...");
+                SaveResults(generator, fontGeometry, settings, imageOut, fntOut, finalW, finalH);
 
                 _statusMessage = $"Success! Saved to {Path.GetFileName(imageOut)}";
                 _isStatusError = false;
@@ -222,8 +181,117 @@ namespace T3.Editor.Gui.Windows.Utilities
                 _statusMessage = $"Error: {e.Message}";
                 _isStatusError = true;
                 Log.Error($"An error occurred during MSDF generation: {e.Message}");
-                Log.Error(e.StackTrace);
+                Log.Error(e.StackTrace ?? string.Empty);
             }
+        }
+
+        private static GenerationSettings GetSettings()
+        {
+            return new GenerationSettings
+                       {
+                           FontPath = _fontFilePath ?? string.Empty,
+                           FontSize = _useRecommended ? 90.0 : (double)_fontSize,
+                           Width = _useRecommended ? 1024 : _width,
+                           Height = _useRecommended ? 1024 : _height,
+                           MiterLimit = _useRecommended ? 3.0 : (double)_miterLimit,
+                           Spacing = _useRecommended ? 2 : _spacing,
+                           RangeValue = _useRecommended ? 2.0 : (double)_rangeValue,
+                           AngleThreshold = _useRecommended ? 3.0 : (double)_angleThreshold
+                       };
+        }
+
+        private static string PrepareOutputDirectory(SymbolPackage package)
+        {
+            string outputDir = Path.Combine(package.ResourcesFolder, "fonts");
+            if (!Directory.Exists(outputDir))
+            {
+                Directory.CreateDirectory(outputDir);
+            }
+            return outputDir;
+        }
+
+        private static FontGeometry SetupFontGeometry(FontHandle fontHandle, string fontName, GenerationSettings settings)
+        {
+            var fontGeometry = new FontGeometry();
+            var charset = Charset.ASCII;
+            fontGeometry.LoadCharset(fontHandle, settings.FontSize, charset);
+            fontGeometry.SetName(fontName);
+
+            foreach (var glyph in fontGeometry.GetGlyphs().Glyphs)
+            {
+                glyph.EdgeColoring(Msdfgen.EdgeColoring.EdgeColoringSimple, settings.AngleThreshold, 0);
+            }
+
+            return fontGeometry;
+        }
+
+        private static bool TryPackGlyphs(GlyphGeometry[] glyphs, GenerationSettings settings, out int finalW, out int finalH)
+        {
+            var packer = new TightAtlasPacker();
+            packer.SetDimensions(settings.Width, settings.Height);
+            packer.SetMiterLimit(settings.MiterLimit);
+            packer.SetSpacing(settings.Spacing);
+            packer.SetPixelRange(new Msdfgen.Range(settings.RangeValue));
+
+            int packResult = packer.Pack(glyphs);
+            if (packResult < 0)
+            {
+                Log.Error("Packing failed!");
+                finalW = 0;
+                finalH = 0;
+                return false;
+            }
+
+            packer.GetDimensions(out finalW, out finalH);
+            return true;
+        }
+
+        private static ImmediateAtlasGenerator<float> GenerateAtlas(GlyphGeometry[] glyphs, int width, int height, GenerationSettings settings)
+        {
+            var generatorConfig = new MSDFGeneratorConfig(true,
+                                                          new ErrorCorrectionConfig(ErrorCorrectionConfig.DistanceErrorCorrectionMode.INDISCRIMINATE,
+                                                                                      ErrorCorrectionConfig.DistanceCheckMode.CHECK_DISTANCE_ALWAYS));
+
+            var generator = new ImmediateAtlasGenerator<float>(width, height, (bitmap, glyph, attrs) =>
+            {
+                var proj = glyph.GetBoxProjection();
+                var gRange = glyph.GetBoxRange();
+                MsdfGenerator.GenerateMSDF(bitmap, glyph.GetShape()!, proj, gRange, generatorConfig);
+            }, 3);
+
+            generator.SetThreadCount(Environment.ProcessorCount);
+            generator.Generate(glyphs);
+            return generator;
+        }
+
+        private static void SaveResults(ImmediateAtlasGenerator<float> generator, FontGeometry fontGeometry, GenerationSettings settings, string imageOut, string fntOut, int finalW, int finalH)
+        {
+            ImageSaver.Save(generator.AtlasStorage.Bitmap, imageOut);
+
+            var metrics = fontGeometry.GetMetrics();
+            FntExporter.Export(new[] { fontGeometry },
+                               ImageType.Msdf,
+                               finalW, finalH,
+                               settings.FontSize,
+                               settings.RangeValue, // distanceRange is rangeValue based on previous code
+                               Path.GetFileName(imageOut),
+                               fntOut,
+                               metrics,
+                               YAxisOrientation.Upward,
+                               new MsdfAtlasGen.Padding(0, 0, 0, 0),
+                               settings.Spacing);
+        }
+
+        private struct GenerationSettings
+        {
+            public string FontPath;
+            public double FontSize;
+            public int Width;
+            public int Height;
+            public double MiterLimit;
+            public int Spacing;
+            public double RangeValue;
+            public double AngleThreshold;
         }
 
         private static SymbolPackage? GetPackageContainingPath(string? fontPath)
