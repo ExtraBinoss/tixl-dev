@@ -1,21 +1,24 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Text;
+using System.Threading.Tasks;
 using ImGuiNET;
-using Msdfgen;
 using MsdfAtlasGen;
+using Msdfgen;
+using Msdfgen.Extensions;
 using T3.Core.Logging;
 using T3.Core.Model;
+using T3.Core.SystemUi;
 using T3.Editor.Gui.Input;
-using T3.Editor.UiModel.ProjectHandling;
 using T3.Editor.Gui.Styling;
 using T3.Editor.Gui.UiHelpers;
-using Msdfgen.Extensions;
-using System.Threading.Tasks;
 using T3.Editor.UiModel;
-using T3.Core.SystemUi;
+using T3.Editor.UiModel.ProjectHandling;
 
 namespace T3.Editor.Gui.Windows.Utilities
 {
@@ -28,55 +31,125 @@ namespace T3.Editor.Gui.Windows.Utilities
             Simple,
             InkTrap
         }
-        
+
         private enum ErrorCorrectionMode
         {
             Disabled,
             Indiscriminate,
-            EdgeOnly
+            EdgeOnly,
+            Auto
         }
 
-        private static ColoringStrategy _coloringStrategy = ColoringStrategy.Simple;
-        private static ErrorCorrectionMode _errorCorrection = ErrorCorrectionMode.Indiscriminate;
-        private static bool _overlap = true;
-        private static Vector4 _outerPadding = Vector4.Zero;
+        public enum CharsetMode
+        {
+            Ascii,
+            ExtendedAscii,
+            Custom,
+            AllGlyphs
+        }
 
+        #region Default Values
+        private const float DefaultFontSize = 30;
+        private const int DefaultWidth = 1024;
+        private const int DefaultHeight = 1024;
+        private const float DefaultMiterLimit = 3.0f;
+        private const int DefaultSpacing = 2;
+        private const float DefaultRange = 2.0f;
+        private const float DefaultAngleThreshold = 3.0f;
+        private const ColoringStrategy DefaultExampleColoring = ColoringStrategy.Simple; // As per recommended settings
+        private const ErrorCorrectionMode DefaultErrorCorrection = ErrorCorrectionMode.Indiscriminate;
+        private const bool DefaultOverlap = true;
+        private static readonly Vector4 DefaultPadding = Vector4.Zero;
+        #endregion
+
+        // Settings fields
+        private static ColoringStrategy _coloringStrategy = DefaultExampleColoring;
+        private static ErrorCorrectionMode _errorCorrection = DefaultErrorCorrection;
+        private static CharsetMode _charsetMode = CharsetMode.Ascii;
+        private static bool _overlap = DefaultOverlap;
+        private static Vector4 _outerPadding = DefaultPadding;
+        private static float _fontSize = DefaultFontSize;
+        private static int _width = DefaultWidth;
+        private static int _height = DefaultHeight;
+        private static float _miterLimit = DefaultMiterLimit;
+        private static int _spacing = DefaultSpacing;
+        private static float _rangeValue = DefaultRange;
+        private static float _angleThreshold = DefaultAngleThreshold;
+        
+        private static string? _customCharsetPath = null;
+        private static string? _fontFilePath = null;
+        private static SymbolPackage? _selectedPackage;
+        
+        // Status & Progress
+        private static bool _isGenerating;
         private static float _generationProgress;
         private static string _progressText = "";
-        private static bool _isGenerating;
+        private static string _statusMessage = "";
+        private static bool _isStatusError = false;
+        private static string _lastOutputDir = "";
+        
+        // Metrics
+        private class GenerationMetrics
+        {
+            public TimeSpan LoadTime;
+            public TimeSpan CharsetTime;
+            public TimeSpan ColoringTime;
+            public TimeSpan PackTime;
+            public TimeSpan GenerateTime;
+            public TimeSpan SaveTime;
+            public TimeSpan TotalTime;
+        }
+        private static GenerationMetrics? _lastMetrics;
 
         public static void Draw()
         {
             FormInputs.SetIndent(50 * T3Ui.UiScaleFactor);
 
             FormInputs.AddSectionHeader("MSDF Generation");
-            CustomComponents.HelpText("Generate MSDF fonts from .ttf/.otf files using MSDF-Sharp.\nChecks for 'Resources/fonts'.");
+            CustomComponents.HelpText("Generate MSDF fonts from .ttf/.otf files using Msdfgen.\nChecks for 'Resources/fonts'.");
             FormInputs.AddVerticalSpace();
-            
+
             if (_isGenerating)
             {
-                 ImGui.BeginDisabled();
+                ImGui.BeginDisabled();
             }
-            
+
+            // Font File
             FormInputs.AddFilePicker("Font File", ref _fontFilePath, null, null, "Select .ttf/.otf file", FileOperations.FilePickerTypes.File);
 
+            // Recommended Toggle
             FormInputs.AddCheckBox("Use Recommended Settings", ref _useRecommended);
 
             if (!_useRecommended)
             {
                 FormInputs.SetIndent(100 * T3Ui.UiScaleFactor);
-                FormInputs.AddFloat("Size", ref _fontSize, 1, 500, 1);
-                FormInputs.AddInt("Width", ref _width, 128, 4096, 128);
-                FormInputs.AddInt("Height", ref _height, 128, 4096, 128);
-                FormInputs.AddFloat("Miter Limit", ref _miterLimit, 0, 10, 0.1f);
-                FormInputs.AddInt("Spacing", ref _spacing, 0, 32, 1);
-                FormInputs.AddFloat("Range", ref _rangeValue, 0.1f, 10, 0.1f);
-                FormInputs.AddFloat("Angle Threshold", ref _angleThreshold, 0, 6, 0.1f);
+
+                // Size
+                DrawSettingWithReset("Size", ref _fontSize, DefaultFontSize, 1, 500, 1);
                 
-                FormInputs.AddEnumDropdown(ref _coloringStrategy, "Coloring Strategy");
-                FormInputs.AddEnumDropdown(ref _errorCorrection, "Error Correction");
-                FormInputs.AddCheckBox("Overlap Support", ref _overlap);
+                // Dimensions
+                DrawSettingWithReset("Width", ref _width, DefaultWidth, 128, 8192, 128);
+                DrawSettingWithReset("Height", ref _height, DefaultHeight, 128, 8192, 128);
                 
+                // Generator Params
+                DrawSettingWithReset("Miter Limit", ref _miterLimit, DefaultMiterLimit, 0, 10, 0.1f);
+                DrawSettingWithReset("Spacing", ref _spacing, DefaultSpacing, 0, 32, 1);
+                DrawSettingWithReset("Range", ref _rangeValue, DefaultRange, 0.1f, 20, 0.1f);
+                DrawSettingWithReset("Angle Thres.", ref _angleThreshold, DefaultAngleThreshold, 0, 6, 0.1f);
+
+                // Enums and Bools
+                DrawEnumWithReset(ref _coloringStrategy, "Coloring Config.", DefaultExampleColoring);
+                DrawEnumWithReset(ref _errorCorrection, "Error Correction", DefaultErrorCorrection);
+                DrawBoolWithReset("Overlap Support", ref _overlap, DefaultOverlap);
+
+                // Charset
+                FormInputs.AddEnumDropdown(ref _charsetMode, "Charset");
+                if (_charsetMode == CharsetMode.Custom)
+                {
+                    FormInputs.AddFilePicker("Charset File", ref _customCharsetPath, null, null, "Select .txt file", FileOperations.FilePickerTypes.File);
+                }
+
+                // Padding
                 FormInputs.DrawFieldSetHeader("Outer Padding");
                 var padding = _outerPadding;
                 var changed = FormInputs.AddFloat("Top", ref padding.X, 0, 100, 1);
@@ -85,17 +158,103 @@ namespace T3.Editor.Gui.Windows.Utilities
                 changed |= FormInputs.AddFloat("Left", ref padding.W, 0, 100, 1);
                 if (changed) _outerPadding = padding;
 
+                // Reset Padding Button
+                if (_outerPadding != Vector4.Zero)
+                {
+                    ImGui.SameLine();
+                    if (ImGui.Button("Reset##Padding")) _outerPadding = Vector4.Zero;
+                }
+
                 FormInputs.ApplyIndent();
             }
             FormInputs.AddVerticalSpace();
-            FormInputs.SetIndent(90 * T3Ui.UiScaleFactor);        
-    
+            FormInputs.SetIndent(90 * T3Ui.UiScaleFactor);
+
+            // Project Selection
+            DrawProjectSelection(out var usagePackage);
+
+            // Generate Button
+            bool hasFile = !string.IsNullOrEmpty(_fontFilePath) && File.Exists(_fontFilePath);
+            bool hasCharset = _charsetMode != CharsetMode.Custom || (!string.IsNullOrEmpty(_customCharsetPath) && File.Exists(_customCharsetPath));
+            
+            if (CustomComponents.DisablableButton("Generate MSDF", hasFile && hasCharset && usagePackage != null && !_isGenerating))
+            {
+                GenerateAsync(usagePackage!).ContinueWith(t =>
+                {
+                    if (t.Exception != null)
+                    {
+                        Log.Error("Unhandled exception in MSDF generation: " + t.Exception);
+                        _statusMessage = $"Error: {t.Exception.Message}";
+                        _isStatusError = true;
+                        _isGenerating = false;
+                    }
+                }, TaskContinuationOptions.OnlyOnFaulted);
+            }
+
+            if (_isGenerating)
+            {
+                ImGui.EndDisabled();
+            }
+
+            // Validations
+            if (!hasFile) CustomComponents.TooltipForLastItem("Please select a valid .ttf/.otf font file.");
+            else if (!hasCharset) CustomComponents.TooltipForLastItem("Please select a valid charset .txt file.");
+            else if (usagePackage == null) CustomComponents.TooltipForLastItem("Please select a target project.");
+
+            // Progress Bar
+            if (_isGenerating)
+            {
+                FormInputs.AddVerticalSpace();
+                ImGui.PushStyleColor(ImGuiCol.PlotHistogram, UiColors.StatusAutomated.Rgba);
+                ImGui.ProgressBar(_generationProgress, new System.Numerics.Vector2(-1, 4), "");
+                ImGui.PopStyleColor();
+                ImGui.Text(_progressText);
+                FormInputs.AddVerticalSpace();
+            }
+
+            // Status and Results
+            if (!string.IsNullOrEmpty(_statusMessage))
+            {
+                var color = _isStatusError ? UiColors.StatusError : UiColors.StatusAutomated;
+                ImGui.TextColored(color, _statusMessage);
+
+                // Performance Tooltip on Success
+                if (!_isStatusError && _lastMetrics != null && ImGui.IsItemHovered())
+                {
+                   ImGui.BeginTooltip();
+                   ImGui.Text("Performance Metrics:");
+                   ImGui.Text($"Load Font: {_lastMetrics.LoadTime.TotalSeconds:F3}s");
+                   ImGui.Text($"Charset:   {_lastMetrics.CharsetTime.TotalSeconds:F3}s");
+                   ImGui.Text($"Coloring:  {_lastMetrics.ColoringTime.TotalSeconds:F3}s");
+                   ImGui.Text($"Packing:   {_lastMetrics.PackTime.TotalSeconds:F3}s");
+                   ImGui.Text($"Generate:  {_lastMetrics.GenerateTime.TotalSeconds:F3}s");
+                   ImGui.Text($"Saving:    {_lastMetrics.SaveTime.TotalSeconds:F3}s");
+                   ImGui.Separator();
+                   ImGui.Text($"Total:     {_lastMetrics.TotalTime.TotalSeconds:F3}s");
+                   ImGui.EndTooltip();
+                }
+
+                if (!_isStatusError && !_isGenerating && !string.IsNullOrEmpty(_lastOutputDir))
+                {
+                    if (ImGui.Button("Open Output Folder"))
+                    {
+                        CoreUi.Instance.OpenWithDefaultApplication(_lastOutputDir);
+                    }
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip("Click to open the folder containing the generated assets.");
+                    }
+                }
+            }
+        }
+
+        private static void DrawProjectSelection(out SymbolPackage? usagePackage)
+        {
             var internalPackage = GetPackageContainingPath(_fontFilePath);
-            SymbolPackage? usagePackage = null;
+            usagePackage = null;
 
             if (internalPackage != null)
             {
-                // Lock to the package containing the file
                 var name = internalPackage.DisplayName;
                 ImGui.BeginDisabled();
                 FormInputs.AddStringInput("Target Project", ref name);
@@ -104,13 +263,9 @@ namespace T3.Editor.Gui.Windows.Utilities
             }
             else
             {
-                // Allow selection for external files
                 var editablePackages = EditableSymbolProject.AllProjects.ToList();
-                
-                // Initialize default selection if needed
                 if (_selectedPackage == null || !editablePackages.Contains(_selectedPackage))
                 {
-                    // Try to use the currently valid project from the focused view
                     var focusedProject = ProjectView.Focused?.OpenedProject.Package;
                     _selectedPackage = focusedProject != null && !focusedProject.IsReadOnly
                                            ? focusedProject
@@ -124,17 +279,14 @@ namespace T3.Editor.Gui.Windows.Utilities
                 {
                     _selectedPackage = editablePackages.FirstOrDefault(p => p.DisplayName == selectedName);
                 }
-                
-                // If the user typed a valid name but we missed it (e.g. didn't hit enter but clicked away, or typed perfectly), try to resolve
+
                 if (_selectedPackage == null || _selectedPackage.DisplayName != selectedName)
                 {
                      var match = editablePackages.FirstOrDefault(p => p.DisplayName == selectedName);
-                     if (match != null)
-                        _selectedPackage = match;
+                     if (match != null) _selectedPackage = match;
                 }
 
                 usagePackage = _selectedPackage;
-                
                 if (usagePackage == null)
                 {
                     ImGui.Indent(150 * T3Ui.UiScaleFactor);
@@ -142,50 +294,60 @@ namespace T3.Editor.Gui.Windows.Utilities
                     ImGui.Unindent(150 * T3Ui.UiScaleFactor);
                 }
             }
-
-            bool hasFile = !string.IsNullOrEmpty(_fontFilePath) && File.Exists(_fontFilePath);
-            if (CustomComponents.DisablableButton("Generate MSDF", hasFile && usagePackage != null && !_isGenerating))
+        }
+        
+        private static void DrawSettingWithReset<T>(string label, ref T value, T defaultValue, float min, float max, float step = 1) where T : struct, IConvertible
+        {
+            if (typeof(T) == typeof(int))
             {
-                // Fire and forget, but ensure exceptions are observed and logged
-                GenerateAsync(usagePackage!).ContinueWith(t =>
-                {
-                    if (t.Exception != null)
-                    {
-                        Log.Error("Unhandled exception in MSDF generation: " + t.Exception);
-                    }
-                }, TaskContinuationOptions.OnlyOnFaulted);
+                int val = Convert.ToInt32(value);
+                if (FormInputs.AddInt(label, ref val, (int)min, (int)max, (int)step)) value = (T)Convert.ChangeType(val, typeof(T));
             }
-            
-            if (_isGenerating)
+            else if (typeof(T) == typeof(float))
             {
-                ImGui.EndDisabled();
-            }
-            
-            if (!hasFile || usagePackage == null)
-            {
-                var reason = !hasFile ? "Please select a valid .ttf/.otf font file." : "Please select a target project.";
-                CustomComponents.TooltipForLastItem(reason);
-            }
-            
-            if (_isGenerating)
-            {
-                FormInputs.AddVerticalSpace();
-                ImGui.PushStyleColor(ImGuiCol.PlotHistogram, UiColors.StatusAutomated.Rgba);
-                ImGui.ProgressBar(_generationProgress, new System.Numerics.Vector2(-1, 4), "");
-                ImGui.PopStyleColor();
-                ImGui.Text(_progressText);
-                FormInputs.AddVerticalSpace();
+                float val = Convert.ToSingle(value);
+                if (FormInputs.AddFloat(label, ref val, min, max, step)) value = (T)Convert.ChangeType(val, typeof(T));
             }
 
-            if (!string.IsNullOrEmpty(_statusMessage))
+            if (!EqualityComparer<T>.Default.Equals(value, defaultValue))
             {
-                var color = _isStatusError ? UiColors.StatusError : UiColors.StatusAutomated;
-                ImGui.TextColored(color, _statusMessage);
-                
-                if (!_isStatusError && !_isGenerating && !string.IsNullOrEmpty(_lastOutputDir) && ImGui.Button("Open Output Folder"))
+                ImGui.SameLine();
+                ImGui.PushID(label);
+                if (CustomComponents.IconButton(Icon.Revert, new System.Numerics.Vector2(ImGui.GetFrameHeight())))
                 {
-                    CoreUi.Instance.OpenWithDefaultApplication(_lastOutputDir);
+                    value = defaultValue;
                 }
+                ImGui.PopID();
+            }
+        }
+        
+        private static void DrawBoolWithReset(string label, ref bool value, bool defaultValue)
+        {
+            FormInputs.AddCheckBox(label, ref value);
+            if (value != defaultValue)
+            {
+                ImGui.SameLine();
+                ImGui.PushID(label);
+                if (CustomComponents.IconButton(Icon.Revert, new System.Numerics.Vector2(ImGui.GetFrameHeight())))
+                {
+                    value = defaultValue;
+                }
+                ImGui.PopID();
+            }
+        }
+
+        private static void DrawEnumWithReset<T>(ref T value, string label, T defaultValue) where T : struct, Enum
+        {
+            FormInputs.AddEnumDropdown(ref value, label);
+            if (!EqualityComparer<T>.Default.Equals(value, defaultValue))
+            {
+                 ImGui.SameLine();
+                 ImGui.PushID(label);
+                 if (CustomComponents.IconButton(Icon.Revert, new System.Numerics.Vector2(ImGui.GetFrameHeight())))
+                 {
+                     value = defaultValue;
+                 }
+                 ImGui.PopID();
             }
         }
 
@@ -201,28 +363,19 @@ namespace T3.Editor.Gui.Windows.Utilities
             _isGenerating = true;
             _generationProgress = 0;
             _progressText = "Starting generation...";
+            _lastMetrics = new GenerationMetrics();
 
             try
             {
                 if (string.IsNullOrEmpty(_fontFilePath) || !File.Exists(_fontFilePath))
                 {
-                    _statusMessage = "Font file not found";
-                    _isStatusError = true;
-                    Log.Error("Font file not found: " + _fontFilePath);
-                    return;
+                    throw new FileNotFoundException("Font file not found", _fontFilePath);
                 }
 
                 var settings = GetSettings();
                 var outputDir = PrepareOutputDirectory(package);
                 var fontName = Path.GetFileNameWithoutExtension(settings.FontPath);
-                if (string.IsNullOrEmpty(fontName))
-                {
-                    _statusMessage = "Font name not found";
-                    _isStatusError = true;
-                    Log.Error($"Font name not found: {settings.FontPath}, please check your Font Path");
-                    return;
-                }
-                
+
                 var imageOut = Path.Combine(outputDir, $"{fontName}_msdf.png");
                 var fontOut = Path.Combine(outputDir, $"{fontName}_msdf.fnt");
 
@@ -232,46 +385,68 @@ namespace T3.Editor.Gui.Windows.Utilities
                     _progressText = $"Generating: {p.Current}/{p.Total} ({p.GlyphName})";
                 });
 
-                // Run heavy lifting on background thread
                 await Task.Run(() =>
                 {
-                    using var font = FreetypeHandle.Initialize();
-                    if (font is null)
-                    {
-                        throw new Exception("Failed to initialize FreeType library (MsdfGen.Extensions.FreetypeHandle.Initialize returned null).");
-                    }
+                    var sw = Stopwatch.StartNew();
 
-                    using var fontHandle = FontHandle.LoadFont(font, settings.FontPath);
-                    if (fontHandle is null)
-                    {
-                        throw new Exception($"Failed to load font from path '{settings.FontPath}'. Please ensure the file is a valid .ttf/.otf font.");
-                    }
+                    // 1. Initialize & Load
+                    using var ft = FreetypeHandle.Initialize();
+                    if (ft is null) throw new Exception("Failed to initialize FreeType.");
+                    using var fontHandle = FontHandle.LoadFont(ft, settings.FontPath);
+                    if (fontHandle is null) throw new Exception("Failed to load font.");
+                    _lastMetrics.LoadTime = sw.Elapsed;
+                    sw.Restart();
 
-                    var fontGeometry = SetupFontGeometry(fontHandle, fontName, settings);
+                    // 2. Charset
+                    var charset = LoadCharset(settings, fontHandle);
+                    var fontGeometry = new FontGeometry();
+                    fontGeometry.LoadCharset(fontHandle, settings.FontSize, charset);
+                    fontGeometry.SetName(fontName);
+                    _lastMetrics.CharsetTime = sw.Elapsed;
+                    sw.Restart();
+
+                    // 3. Coloring
+                    foreach (var glyph in fontGeometry.GetGlyphs().Glyphs)
+                    {
+                        var strategy = settings.Strategy == ColoringStrategy.Simple 
+                                        ? Msdfgen.EdgeColoring.EdgeColoringSimple 
+                                        : (EdgeColoringDelegate)Msdfgen.EdgeColoring.EdgeColoringInkTrap;
+                        
+                        glyph.EdgeColoring(strategy, settings.AngleThreshold, 0);
+                    }
+                    _lastMetrics.ColoringTime = sw.Elapsed;
+                    sw.Restart();
+
+                    // 4. Packing
                     var glyphs = fontGeometry.GetGlyphs().Glyphs.ToArray();
-
                     if (!TryPackGlyphs(glyphs, settings, out var finalW, out var finalH, out var packerScale))
                     {
-                        throw new Exception($"Packing {glyphs.Length} glyphs into {settings.Width}x{settings.Height} atlas failed. " +
-                                            $"Try increasing the atlas resolution or decreasing the font size.");
+                        throw new Exception($"Packing {glyphs.Length} glyphs failed. Try increasing Width/Height or reducing Font Size.");
                     }
+                    _lastMetrics.PackTime = sw.Elapsed;
+                    sw.Restart();
 
+                    // 5. Generation
                     var generator = GenerateAtlas(glyphs, finalW, finalH, settings, progress);
+                    _lastMetrics.GenerateTime = sw.Elapsed;
+                    sw.Restart();
 
+                    // 6. Saving
                     SaveResults(generator, fontGeometry, settings, imageOut, fontOut, finalW, finalH, packerScale);
+                    _lastMetrics.SaveTime = sw.Elapsed;
+                    
+                    _lastMetrics.TotalTime = _lastMetrics.LoadTime + _lastMetrics.CharsetTime + _lastMetrics.ColoringTime + _lastMetrics.PackTime + _lastMetrics.GenerateTime + _lastMetrics.SaveTime;
                 });
 
                 _lastOutputDir = outputDir;
-                _statusMessage = $"Success! Saved to {Path.GetFileName(imageOut)}";
-                _isStatusError = false;
-                Log.Debug("MSDF Generation successful!");
+                _statusMessage = $"Success! Saved to {Path.GetFileName(imageOut)} ({_lastMetrics?.TotalTime.TotalSeconds:F2}s)";
+                Log.Debug($"MSDF Generation successful! Total time: {_lastMetrics?.TotalTime.TotalSeconds:F3}s");
             }
             catch (Exception e)
             {
                 _statusMessage = $"Error: {e.Message}";
                 _isStatusError = true;
-                Log.Error($"An error occurred during MSDF generation: {e.Message}");
-                Log.Error(e.StackTrace ?? string.Empty);
+                Log.Error($"MSDF Generation Failed: {e.Message}");
             }
             finally
             {
@@ -280,59 +455,77 @@ namespace T3.Editor.Gui.Windows.Utilities
                 _generationProgress = 0;
             }
         }
+        
+        private static Charset LoadCharset(GenerationSettings settings, FontHandle fontHandle)
+        {
+            if (settings.CharsetMode == CharsetMode.AllGlyphs)
+            {
+                 var charset = new Charset();
+                 if (FontLoader.GetAvailableCodepoints(out var codepoints, fontHandle))
+                 {
+                     foreach (var cp in codepoints) charset.Add(cp);
+                 }
+                 return charset;
+            }
+            
+            if (settings.CharsetMode == CharsetMode.ExtendedAscii) return Charset.EASCII;
+            
+            if (settings.CharsetMode == CharsetMode.Custom && File.Exists(settings.CustomCharsetPath))
+            {
+                var charset = new Charset();
+                var text = File.ReadAllText(settings.CustomCharsetPath);
+                foreach (var c in text) if (!char.IsControl(c)) charset.Add(c);
+                return charset;
+            }
+
+            return Charset.ASCII;
+        }
 
         private static GenerationSettings GetSettings()
         {
+            // If recommended, enforce specific defaults but maybe keep some flexibility if desired? 
+            // The request implies recommended should just be standard defaults.
+            if (_useRecommended)
+            {
+                 return new GenerationSettings
+                 {
+                     FontPath = _fontFilePath ?? string.Empty,
+                     FontSize = 90.0, // Original recommended value
+                     Width = 1024,
+                     Height = 1024,
+                     MiterLimit = 3.0,
+                     Spacing = 2,
+                     RangeValue = 2.0,
+                     AngleThreshold = 3.0,
+                     Strategy = ColoringStrategy.Simple,
+                     ErrorCorrection = ErrorCorrectionMode.Indiscriminate,
+                     Overlap = true,
+                     OuterPadding = new MsdfAtlasGen.Padding(0, 0, 0, 0),
+                     CharsetMode = CharsetMode.Ascii
+                 };
+            }
+
             return new GenerationSettings
-                       {
-                           FontPath = _fontFilePath ?? string.Empty,
-                           FontSize = _useRecommended ? 90.0 : (double)_fontSize,
-                           Width = _useRecommended ? 1024 : _width,
-                           Height = _useRecommended ? 1024 : _height,
-                           MiterLimit = _useRecommended ? 3.0 : (double)_miterLimit,
-                           Spacing = _useRecommended ? 2 : _spacing,
-                           RangeValue = _useRecommended ? 2.0 : (double)_rangeValue,
-                           AngleThreshold = _useRecommended ? 3.0 : (double)_angleThreshold,
-                           Strategy = _useRecommended ? ColoringStrategy.Simple : _coloringStrategy,
-                           ErrorCorrection = _useRecommended ? ErrorCorrectionMode.Indiscriminate : _errorCorrection,
-                           Overlap = _useRecommended || _overlap,
-                           OuterPadding = _useRecommended ? new MsdfAtlasGen.Padding(0, 0, 0, 0)
-                                                          : new MsdfAtlasGen.Padding((int)_outerPadding.W, (int)_outerPadding.Z, (int)_outerPadding.Y, (int)_outerPadding.X) // Left, Bottom, Right, Top
-                        };
-        }
-
-        private static string PrepareOutputDirectory(SymbolPackage package)
-        {
-            var outputDir = Path.Combine(package.ResourcesFolder, "fonts");
-            if (!Directory.Exists(outputDir))
             {
-                Directory.CreateDirectory(outputDir);
-            }
-            return outputDir;
+                FontPath = _fontFilePath ?? string.Empty,
+                FontSize = _fontSize,
+                Width = _width,
+                Height = _height,
+                MiterLimit = _miterLimit,
+                Spacing = _spacing,
+                RangeValue = _rangeValue,
+                AngleThreshold = _angleThreshold,
+                Strategy = _coloringStrategy,
+                ErrorCorrection = _errorCorrection,
+                Overlap = _overlap,
+                OuterPadding = new MsdfAtlasGen.Padding((int)_outerPadding.W, (int)_outerPadding.Z, (int)_outerPadding.Y, (int)_outerPadding.X),
+                CharsetMode = _charsetMode,
+                CustomCharsetPath = _customCharsetPath ?? string.Empty
+            };
         }
-
-        private static FontGeometry SetupFontGeometry(FontHandle fontHandle, string fontName, GenerationSettings settings)
-        {
-            var fontGeometry = new FontGeometry();
-            fontGeometry.LoadCharset(fontHandle, settings.FontSize, Charset.ASCII);
-            fontGeometry.SetName(fontName);
-
-            foreach (var glyph in fontGeometry.GetGlyphs().Glyphs)
-            {
-                switch (settings.Strategy)
-                {
-                    case ColoringStrategy.Simple:
-                        glyph.EdgeColoring(Msdfgen.EdgeColoring.EdgeColoringSimple, settings.AngleThreshold, 0);
-                        break;
-                    case ColoringStrategy.InkTrap:
-                        glyph.EdgeColoring(Msdfgen.EdgeColoring.EdgeColoringInkTrap, settings.AngleThreshold, 0);
-                        break;
-                }
-            }
-
-            return fontGeometry;
-        }
-
+        
+        // ... (TryPackGlyphs, GenerateAtlas, SaveResults, PrepareOutputDirectory, IsPathUnderFolder, GetPackageContainingPath same as before with minor tweaks for new types) 
+        
         private static bool TryPackGlyphs(GlyphGeometry[] glyphs, GenerationSettings settings, out int finalW, out int finalH, out double packerScale)
         {
             var packer = new TightAtlasPacker();
@@ -345,9 +538,7 @@ namespace T3.Editor.Gui.Windows.Utilities
             int packResult = packer.Pack(glyphs);
             if (packResult < 0)
             {
-                finalW = 0;
-                finalH = 0;
-                packerScale = 0;
+                finalW = 0; finalH = 0; packerScale = 0;
                 return false;
             }
 
@@ -358,52 +549,70 @@ namespace T3.Editor.Gui.Windows.Utilities
 
         private static ImmediateAtlasGenerator<float> GenerateAtlas(GlyphGeometry[] glyphs, int width, int height, GenerationSettings settings, IProgress<GeneratorProgress> progress)
         {
-            var errorMode = settings.ErrorCorrection switch
-            {
-                ErrorCorrectionMode.Disabled => ErrorCorrectionConfig.DistanceErrorCorrectionMode.DISABLED,
-                ErrorCorrectionMode.Indiscriminate => ErrorCorrectionConfig.DistanceErrorCorrectionMode.INDISCRIMINATE,
-                ErrorCorrectionMode.EdgeOnly => ErrorCorrectionConfig.DistanceErrorCorrectionMode.EDGE_ONLY,
-                _ => ErrorCorrectionConfig.DistanceErrorCorrectionMode.INDISCRIMINATE
-            };
+             var errorMode = settings.ErrorCorrection switch
+             {
+                 ErrorCorrectionMode.Disabled => ErrorCorrectionConfig.DistanceErrorCorrectionMode.DISABLED,
+                 ErrorCorrectionMode.Indiscriminate => ErrorCorrectionConfig.DistanceErrorCorrectionMode.INDISCRIMINATE,
+                 ErrorCorrectionMode.EdgeOnly => ErrorCorrectionConfig.DistanceErrorCorrectionMode.EDGE_ONLY,
+                 ErrorCorrectionMode.Auto => ErrorCorrectionConfig.DistanceErrorCorrectionMode.AUTO,
+                 _ => ErrorCorrectionConfig.DistanceErrorCorrectionMode.INDISCRIMINATE
+             };
 
-            var generatorConfig = new MSDFGeneratorConfig(settings.Overlap,
-                                                          new ErrorCorrectionConfig(errorMode,
-                                                                                      ErrorCorrectionConfig.DistanceCheckMode.CHECK_DISTANCE_ALWAYS));
+             var generatorConfig = new MSDFGeneratorConfig(settings.Overlap,
+                                                           new ErrorCorrectionConfig(errorMode,
+                                                                                       ErrorCorrectionConfig.DistanceCheckMode.CHECK_DISTANCE_ALWAYS));
+             
+             // Always 3 channels for MSDF
+             var generator = new ImmediateAtlasGenerator<float>(width, height, (bitmap, glyph, attrs) =>
+             {
+                 var proj = glyph.GetBoxProjection();
+                 var gRange = glyph.GetBoxRange();
+                 MsdfGenerator.GenerateMSDF(bitmap, glyph.GetShape()!, proj, gRange, generatorConfig);
+             }, 3);
 
-            var generator = new ImmediateAtlasGenerator<float>(width, height, (bitmap, glyph, attrs) =>
-            {
-                var proj = glyph.GetBoxProjection();
-                var gRange = glyph.GetBoxRange();
-                MsdfGenerator.GenerateMSDF(bitmap, glyph.GetShape()!, proj, gRange, generatorConfig);
-            }, 3);
-
-            generator.SetThreadCount(Environment.ProcessorCount);
-            generator.Generate(glyphs, progress);
-            return generator;
+             generator.SetThreadCount(Environment.ProcessorCount);
+             generator.Generate(glyphs, progress);
+             return generator;
         }
 
         private static void SaveResults(ImmediateAtlasGenerator<float> generator, FontGeometry fontGeometry, GenerationSettings settings, string imageOut, string fontOut, int finalW, int finalH, double packerScale)
         {
             ImageSaver.Save(generator.AtlasStorage.Bitmap, imageOut);
-
             var metrics = fontGeometry.GetMetrics();
-            FntExporter.Export([fontGeometry],
-                               ImageType.Msdf,
-                               finalW, finalH,
-                               settings.FontSize,
-                               settings.RangeValue,
-                               Path.GetFileName(imageOut),
-                               fontOut,
-                               metrics,
-                               YAxisOrientation.Upward,
-                               settings.OuterPadding,
-                               settings.Spacing,
-                               packerScale);
+            FntExporter.Export([fontGeometry], ImageType.Msdf, finalW, finalH, settings.FontSize, settings.RangeValue,
+                               Path.GetFileName(imageOut), fontOut, metrics, YAxisOrientation.Upward, settings.OuterPadding, settings.Spacing, packerScale);
+        }
+        
+        private static string PrepareOutputDirectory(SymbolPackage package)
+        {
+            var outputDir = Path.Combine(package.ResourcesFolder, "fonts");
+            if (!Directory.Exists(outputDir)) Directory.CreateDirectory(outputDir);
+            return outputDir;
+        }
+        
+        private static bool IsPathUnderFolder(string fullPath, string? folderPath)
+        {
+            if (string.IsNullOrEmpty(fullPath) || string.IsNullOrEmpty(folderPath)) return false;
+            try { fullPath = Path.GetFullPath(fullPath); folderPath = Path.GetFullPath(folderPath); } catch { return false; }
+            var sep = Path.DirectorySeparatorChar.ToString();
+            if (!folderPath.EndsWith(sep)) folderPath += sep;
+            return fullPath.StartsWith(folderPath, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static SymbolPackage? GetPackageContainingPath(string? fontPath)
+        {
+            if (string.IsNullOrWhiteSpace(fontPath)) return null;
+            try 
+            { 
+               var full = Path.GetFullPath(fontPath); 
+               return SymbolPackage.AllPackages.FirstOrDefault(p => IsPathUnderFolder(full, p.Folder) || IsPathUnderFolder(full, p.ResourcesFolder));
+            }
+            catch { return null; }
         }
 
         private sealed record GenerationSettings
         {
-            public string FontPath { get; init; } = string.Empty;
+            public string FontPath { get; init; } = "";
             public double FontSize { get; init; }
             public int Width { get; init; }
             public int Height { get; init; }
@@ -415,65 +624,8 @@ namespace T3.Editor.Gui.Windows.Utilities
             public ErrorCorrectionMode ErrorCorrection { get; init; }
             public bool Overlap { get; init; }
             public MsdfAtlasGen.Padding OuterPadding { get; init; } = new(0, 0, 0, 0);
+            public CharsetMode CharsetMode { get; init; }
+            public string CustomCharsetPath { get; init; } = "";
         }
-
-        private static bool IsPathUnderFolder(string fullPath, string? folderPath)
-        {
-            if (string.IsNullOrEmpty(fullPath) || string.IsNullOrEmpty(folderPath))
-                return false;
-
-            string fullFolderPath;
-            try
-            {
-                fullFolderPath = Path.GetFullPath(folderPath);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-
-            var separatorString = Path.DirectorySeparatorChar.ToString();
-            if (!fullFolderPath.EndsWith(separatorString, StringComparison.Ordinal))
-            {
-                fullFolderPath += separatorString;
-            }
-
-            return fullPath.StartsWith(fullFolderPath, StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static SymbolPackage? GetPackageContainingPath(string? fontPath)
-        {
-            if (string.IsNullOrWhiteSpace(fontPath))
-                return null;
-
-            string fullFontPath;
-            try
-            {
-                fullFontPath = Path.GetFullPath(fontPath);
-            }
-            catch (Exception)
-            {
-                Log.Error("Failed to get full path for font path: " + fontPath);
-                return null;
-            }
-
-            var package = SymbolPackage.AllPackages.FirstOrDefault(p =>
-                                                                       IsPathUnderFolder(fullFontPath, p.Folder) ||
-                                                                       IsPathUnderFolder(fullFontPath, p.ResourcesFolder));
-            return package;
-        }
-
-        private static string? _fontFilePath = null;
-        private static SymbolPackage? _selectedPackage;
-        private static string _statusMessage = "";
-        private static string _lastOutputDir = "";
-        private static bool _isStatusError = false;
-        private static float _fontSize = 80;
-        private static int _width = 1024;
-        private static int _height = 1024;
-        private static float _miterLimit = 3.0f;
-        private static int _spacing = 2;
-        private static float _rangeValue = 2.0f;
-        private static float _angleThreshold = 3.0f;
     }
 }
