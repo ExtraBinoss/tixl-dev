@@ -215,6 +215,13 @@ namespace T3.Editor.Gui.Windows.Utilities
                 var settings = GetSettings();
                 var outputDir = PrepareOutputDirectory(package);
                 var fontName = Path.GetFileNameWithoutExtension(settings.FontPath);
+                if (string.IsNullOrEmpty(fontName))
+                {
+                    _statusMessage = "Font name not found";
+                    _isStatusError = true;
+                    Log.Error($"Font name not found: {settings.FontPath}, please check your Font Path");
+                    return;
+                }
                 
                 var imageOut = Path.Combine(outputDir, $"{fontName}_msdf.png");
                 var fontOut = Path.Combine(outputDir, $"{fontName}_msdf.fnt");
