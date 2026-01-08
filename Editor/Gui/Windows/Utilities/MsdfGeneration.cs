@@ -50,7 +50,7 @@ namespace T3.Editor.Gui.Windows.Utilities
             FormInputs.SetIndent(50 * T3Ui.UiScaleFactor);
 
             FormInputs.AddSectionHeader("MSDF Generation");
-            CustomComponents.HelpText("Generate MSDF fonts from .ttf files using MSDF-Sharp.\nChecks for 'Resources/fonts'.");
+            CustomComponents.HelpText("Generate MSDF fonts from .ttf/.otf files using MSDF-Sharp.\nChecks for 'Resources/fonts'.");
             FormInputs.AddVerticalSpace();
             
             if (_isGenerating)
@@ -58,7 +58,7 @@ namespace T3.Editor.Gui.Windows.Utilities
                  ImGui.BeginDisabled();
             }
             
-            FormInputs.AddFilePicker("Font File", ref _fontFilePath, null, null, "Select .ttf file", FileOperations.FilePickerTypes.File);
+            FormInputs.AddFilePicker("Font File", ref _fontFilePath, null, null, "Select .ttf/.otf file", FileOperations.FilePickerTypes.File);
 
             FormInputs.AddCheckBox("Use Recommended Settings", ref _useRecommended);
 
@@ -163,7 +163,7 @@ namespace T3.Editor.Gui.Windows.Utilities
             
             if (!hasFile || usagePackage == null)
             {
-                var reason = !hasFile ? "Please select a valid .ttf font file." : "Please select a target project.";
+                var reason = !hasFile ? "Please select a valid .ttf/.otf font file." : "Please select a target project.";
                 CustomComponents.TooltipForLastItem(reason);
             }
             
@@ -244,7 +244,7 @@ namespace T3.Editor.Gui.Windows.Utilities
                     using var fontHandle = FontHandle.LoadFont(font, settings.FontPath);
                     if (fontHandle is null)
                     {
-                        throw new Exception($"Failed to load font from path '{settings.FontPath}'. Please ensure the file is a valid .ttf font.");
+                        throw new Exception($"Failed to load font from path '{settings.FontPath}'. Please ensure the file is a valid .ttf/.otf font.");
                     }
 
                     var fontGeometry = SetupFontGeometry(fontHandle, fontName, settings);
