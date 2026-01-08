@@ -725,7 +725,9 @@ internal static class FormInputs
 
         if (isFilePickerVisible)
         {
+            ImGui.PushID(label);
             modified |= FileOperations.DrawFileSelector(showFilePicker, ref value);
+            ImGui.PopID();
         }
 
         AppendTooltip(tooltip);
