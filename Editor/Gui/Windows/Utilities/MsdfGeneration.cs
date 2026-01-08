@@ -457,7 +457,7 @@ namespace T3.Editor.Gui.Windows.Utilities
         private static string _statusMessage = "";
         private static string _lastOutputDir = "";
         private static bool _isStatusError = false;
-        private static float _fontSize = 90;
+        private static float _fontSize = 113;
         private static int _width = 1024;
         private static int _height = 1024;
         private static float _miterLimit = 3.0f;
