@@ -243,7 +243,7 @@ namespace T3.Editor.Gui.Windows.Utilities
                     var fontGeometry = SetupFontGeometry(fontHandle, fontName, settings);
                     var glyphs = fontGeometry.GetGlyphs().Glyphs.ToArray();
 
-                    if (!TryPackGlyphs(glyphs, settings, out var finalW, out var finalH))
+                    if (!TryPackGlyphs(glyphs, settings, out var finalW, out var finalH, out var packerScale))
                     {
                         throw new Exception($"Packing {glyphs.Length} glyphs into {settings.Width}x{settings.Height} atlas failed. " +
                                             $"Try increasing the atlas resolution or decreasing the font size.");
@@ -251,7 +251,7 @@ namespace T3.Editor.Gui.Windows.Utilities
 
                     var generator = GenerateAtlas(glyphs, finalW, finalH, settings, progress);
 
-                    SaveResults(generator, fontGeometry, settings, imageOut, fontOut, finalW, finalH);
+                    SaveResults(generator, fontGeometry, settings, imageOut, fontOut, finalW, finalH, packerScale);
                 });
 
                 _lastOutputDir = outputDir;
@@ -326,23 +326,26 @@ namespace T3.Editor.Gui.Windows.Utilities
             return fontGeometry;
         }
 
-        private static bool TryPackGlyphs(GlyphGeometry[] glyphs, GenerationSettings settings, out int finalW, out int finalH)
+        private static bool TryPackGlyphs(GlyphGeometry[] glyphs, GenerationSettings settings, out int finalW, out int finalH, out double packerScale)
         {
             var packer = new TightAtlasPacker();
             packer.SetDimensions(settings.Width, settings.Height);
             packer.SetMiterLimit(settings.MiterLimit);
             packer.SetSpacing(settings.Spacing);
             packer.SetPixelRange(new Msdfgen.Range(settings.RangeValue));
+            packer.SetOuterPixelPadding(settings.OuterPadding);
 
             int packResult = packer.Pack(glyphs);
             if (packResult < 0)
             {
                 finalW = 0;
                 finalH = 0;
+                packerScale = 0;
                 return false;
             }
 
             packer.GetDimensions(out finalW, out finalH);
+            packerScale = packer.GetScale();
             return true;
         }
 
@@ -372,7 +375,7 @@ namespace T3.Editor.Gui.Windows.Utilities
             return generator;
         }
 
-        private static void SaveResults(ImmediateAtlasGenerator<float> generator, FontGeometry fontGeometry, GenerationSettings settings, string imageOut, string fontOut, int finalW, int finalH)
+        private static void SaveResults(ImmediateAtlasGenerator<float> generator, FontGeometry fontGeometry, GenerationSettings settings, string imageOut, string fontOut, int finalW, int finalH, double packerScale)
         {
             ImageSaver.Save(generator.AtlasStorage.Bitmap, imageOut);
 
@@ -387,7 +390,8 @@ namespace T3.Editor.Gui.Windows.Utilities
                                metrics,
                                YAxisOrientation.Upward,
                                settings.OuterPadding,
-                               settings.Spacing);
+                               settings.Spacing,
+                               packerScale);
         }
 
         private sealed record GenerationSettings
@@ -457,7 +461,7 @@ namespace T3.Editor.Gui.Windows.Utilities
         private static string _statusMessage = "";
         private static string _lastOutputDir = "";
         private static bool _isStatusError = false;
-        private static float _fontSize = 113;
+        private static float _fontSize = 80;
         private static int _width = 1024;
         private static int _height = 1024;
         private static float _miterLimit = 3.0f;
