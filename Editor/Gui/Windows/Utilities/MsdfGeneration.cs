@@ -96,7 +96,7 @@ namespace T3.Editor.Gui.Windows.Utilities
             if (internalPackage != null)
             {
                 // Lock to the package containing the file
-                string name = internalPackage.DisplayName;
+                var name = internalPackage.DisplayName;
                 ImGui.BeginDisabled();
                 FormInputs.AddStringInput("Target Project", ref name);
                 ImGui.EndDisabled();
@@ -118,7 +118,7 @@ namespace T3.Editor.Gui.Windows.Utilities
                 }
 
                 var packageNames = editablePackages.Select(p => p.DisplayName).OrderBy(n => n);
-                string selectedName = _selectedPackage?.DisplayName ?? "";
+                var selectedName = _selectedPackage?.DisplayName ?? "";
 
                 if (FormInputs.AddStringInputWithSuggestions("Target Project", ref selectedName, packageNames, "Select Project"))
                 {
@@ -163,7 +163,7 @@ namespace T3.Editor.Gui.Windows.Utilities
             
             if (!hasFile || usagePackage == null)
             {
-                string reason = !hasFile ? "Please select a valid .ttf font file." : "Please select a target project.";
+                var reason = !hasFile ? "Please select a valid .ttf font file." : "Please select a target project.";
                 CustomComponents.TooltipForLastItem(reason);
             }
             
@@ -213,11 +213,11 @@ namespace T3.Editor.Gui.Windows.Utilities
                 }
 
                 var settings = GetSettings();
-                string outputDir = PrepareOutputDirectory(package);
-                string fontName = Path.GetFileNameWithoutExtension(settings.FontPath);
+                var outputDir = PrepareOutputDirectory(package);
+                var fontName = Path.GetFileNameWithoutExtension(settings.FontPath);
                 
-                string imageOut = Path.Combine(outputDir, $"{fontName}_msdf.png");
-                string fntOut = Path.Combine(outputDir, $"{fontName}_msdf.fnt");
+                var imageOut = Path.Combine(outputDir, $"{fontName}_msdf.png");
+                var fontOut = Path.Combine(outputDir, $"{fontName}_msdf.fnt");
 
                 var progress = new Progress<GeneratorProgress>(p =>
                 {
@@ -228,13 +228,13 @@ namespace T3.Editor.Gui.Windows.Utilities
                 // Run heavy lifting on background thread
                 await Task.Run(() =>
                 {
-                    using var ft = FreetypeHandle.Initialize();
-                    if (ft is null)
+                    using var font = FreetypeHandle.Initialize();
+                    if (font is null)
                     {
                         throw new Exception("Failed to initialize FreeType library (MsdfGen.Extensions.FreetypeHandle.Initialize returned null).");
                     }
 
-                    using var fontHandle = FontHandle.LoadFont(ft, settings.FontPath);
+                    using var fontHandle = FontHandle.LoadFont(font, settings.FontPath);
                     if (fontHandle is null)
                     {
                         throw new Exception($"Failed to load font from path '{settings.FontPath}'. Please ensure the file is a valid .ttf font.");
@@ -243,12 +243,15 @@ namespace T3.Editor.Gui.Windows.Utilities
                     var fontGeometry = SetupFontGeometry(fontHandle, fontName, settings);
                     var glyphs = fontGeometry.GetGlyphs().Glyphs.ToArray();
 
-                    if (!TryPackGlyphs(glyphs, settings, out int finalW, out int finalH))
-                        throw new Exception("Packing failed.");
+                    if (!TryPackGlyphs(glyphs, settings, out var finalW, out var finalH))
+                    {
+                        throw new Exception($"Packing {glyphs.Length} glyphs into {settings.Width}x{settings.Height} atlas failed. " +
+                                            $"Try increasing the atlas resolution or decreasing the font size.");
+                    }
 
                     var generator = GenerateAtlas(glyphs, finalW, finalH, settings, progress);
 
-                    SaveResults(generator, fontGeometry, settings, imageOut, fntOut, finalW, finalH);
+                    SaveResults(generator, fontGeometry, settings, imageOut, fontOut, finalW, finalH);
                 });
 
                 _lastOutputDir = outputDir;
@@ -293,7 +296,7 @@ namespace T3.Editor.Gui.Windows.Utilities
 
         private static string PrepareOutputDirectory(SymbolPackage package)
         {
-            string outputDir = Path.Combine(package.ResourcesFolder, "fonts");
+            var outputDir = Path.Combine(package.ResourcesFolder, "fonts");
             if (!Directory.Exists(outputDir))
             {
                 Directory.CreateDirectory(outputDir);
@@ -334,7 +337,6 @@ namespace T3.Editor.Gui.Windows.Utilities
             int packResult = packer.Pack(glyphs);
             if (packResult < 0)
             {
-                Log.Error("Packing failed!");
                 finalW = 0;
                 finalH = 0;
                 return false;
@@ -370,7 +372,7 @@ namespace T3.Editor.Gui.Windows.Utilities
             return generator;
         }
 
-        private static void SaveResults(ImmediateAtlasGenerator<float> generator, FontGeometry fontGeometry, GenerationSettings settings, string imageOut, string fntOut, int finalW, int finalH)
+        private static void SaveResults(ImmediateAtlasGenerator<float> generator, FontGeometry fontGeometry, GenerationSettings settings, string imageOut, string fontOut, int finalW, int finalH)
         {
             ImageSaver.Save(generator.AtlasStorage.Bitmap, imageOut);
 
@@ -381,7 +383,7 @@ namespace T3.Editor.Gui.Windows.Utilities
                                settings.FontSize,
                                settings.RangeValue,
                                Path.GetFileName(imageOut),
-                               fntOut,
+                               fontOut,
                                metrics,
                                YAxisOrientation.Upward,
                                settings.OuterPadding,
