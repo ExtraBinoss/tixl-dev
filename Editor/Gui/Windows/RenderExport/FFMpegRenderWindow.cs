@@ -7,6 +7,7 @@ using T3.Editor.Gui.Styling;
 using T3.Editor.Gui.UiHelpers;
 using FFMpegCore;
 using System.IO;
+using T3.Editor.Gui.Interaction.Timing;
 
 namespace T3.Editor.Gui.Windows.RenderExport;
 
@@ -107,10 +108,31 @@ internal sealed class FFMpegRenderWindow : Window
              case FFMpegRenderSettings.TimeRanges.Loop:
                  if (Core.Animation.Playback.Current.IsLooping)
                  {
-                     FFMpegRenderSettings.StartInBars = (float)Core.Animation.Playback.Current.LoopRange.Start;
-                     FFMpegRenderSettings.EndInBars = (float)Core.Animation.Playback.Current.LoopRange.End;
+                     var playback = Core.Animation.Playback.Current;
+                     var startInSeconds = playback.SecondsFromBars(playback.LoopRange.Start);
+                     var endInSeconds = playback.SecondsFromBars(playback.LoopRange.End);
+                     
+                     FFMpegRenderSettings.StartInBars = (float)RenderTiming.SecondsToReferenceTime(startInSeconds, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
+                     FFMpegRenderSettings.EndInBars = (float)RenderTiming.SecondsToReferenceTime(endInSeconds, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
                  }
                  break;
+                 
+             case FFMpegRenderSettings.TimeRanges.Soundtrack:
+                if (PlaybackUtils.TryFindingSoundtrack(out var handle, out _))
+                {
+                    var playback = Core.Animation.Playback.Current;
+                    var clip = handle.Clip;
+                    var startTime = (float)RenderTiming.SecondsToReferenceTime(playback.SecondsFromBars(clip.StartTime), (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
+                    var endTime = (float)RenderTiming.SecondsToReferenceTime(clip.EndTime > 0 
+                                                                                ? playback.SecondsFromBars(clip.EndTime) 
+                                                                                : clip.LengthInSeconds, 
+                                                                             (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, 
+                                                                             FFMpegRenderSettings.Fps);
+                    
+                    FFMpegRenderSettings.StartInBars = startTime;
+                    FFMpegRenderSettings.EndInBars = endTime;
+                }
+                break;
         }
 
         FormInputs.AddVerticalSpace();
@@ -119,7 +141,14 @@ internal sealed class FFMpegRenderWindow : Window
         var oldRef = FFMpegRenderSettings.Reference;
         if (FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.Reference, "Defined as"))
         {
-             // Conversion logic needed here
+             FFMpegRenderSettings.StartInBars = (float)RenderTiming.ConvertReferenceTime(FFMpegRenderSettings.StartInBars, 
+                                                                                        (RenderSettings.TimeReference)oldRef, 
+                                                                                        (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, 
+                                                                                        FFMpegRenderSettings.Fps);
+             FFMpegRenderSettings.EndInBars = (float)RenderTiming.ConvertReferenceTime(FFMpegRenderSettings.EndInBars, 
+                                                                                        (RenderSettings.TimeReference)oldRef, 
+                                                                                        (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, 
+                                                                                        FFMpegRenderSettings.Fps);
         }
         
         // This is getting complicated to duplicate RenderTiming. 
@@ -137,19 +166,30 @@ internal sealed class FFMpegRenderWindow : Window
         changed |= FormInputs.AddFloat($"Start in {FFMpegRenderSettings.Reference}", ref FFMpegRenderSettings.StartInBars);
         changed |= FormInputs.AddFloat($"End in {FFMpegRenderSettings.Reference}", ref FFMpegRenderSettings.EndInBars);
         
+        if (changed)
+            FFMpegRenderSettings.TimeRange = FFMpegRenderSettings.TimeRanges.Custom;
+        
+        FormInputs.AddVerticalSpace();
+
         FormInputs.AddVerticalSpace();
 
         FormInputs.AddFloat("FPS", ref FFMpegRenderSettings.Fps, 0);
+        if (FFMpegRenderSettings.Fps < 0) FFMpegRenderSettings.Fps = -FFMpegRenderSettings.Fps;
         
-        // FFMpegRenderSettings.FrameCount calculation needs to happen
-        // Simple calc:
-        var start = FFMpegRenderSettings.StartInBars; 
-        var end = FFMpegRenderSettings.EndInBars;
-        // Simplified for Bars rendering for now, assuming 4/4 signature logic etc is complex.
+        // Handle FPS change rescaling
+        if (FFMpegRenderSettings.Fps != 0 && Math.Abs(_lastValidFps - FFMpegRenderSettings.Fps) > float.Epsilon)
+        {
+            FFMpegRenderSettings.StartInBars = (float)RenderTiming.ConvertFps(FFMpegRenderSettings.StartInBars, _lastValidFps, FFMpegRenderSettings.Fps);
+            FFMpegRenderSettings.EndInBars = (float)RenderTiming.ConvertFps(FFMpegRenderSettings.EndInBars, _lastValidFps, FFMpegRenderSettings.Fps);
+            _lastValidFps = FFMpegRenderSettings.Fps;
+        }
+
+        // Calculate Frame Count
+        var start = RenderTiming.ReferenceTimeToSeconds(FFMpegRenderSettings.StartInBars, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
+        var end = RenderTiming.ReferenceTimeToSeconds(FFMpegRenderSettings.EndInBars, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
+        FFMpegRenderSettings.FrameCount = (int)Math.Round((end - start) * FFMpegRenderSettings.Fps);
         
-        // For prototype, just use manual frame count or bars?
-        // Let's rely on standard logic but maybe I can fix RenderTiming usage in next step.
-        // For now, `FrameCount` needs to be set.
+
     }
 
     private void DrawVideoSettings(Int2 size)
@@ -189,5 +229,6 @@ internal sealed class FFMpegRenderWindow : Window
     internal override List<Window> GetInstances() => [];
 
     private static string _lastHelpString = string.Empty;
+    private static float _lastValidFps = 60f;
     private static FFMpegRenderSettings FFMpegRenderSettings => FFMpegRenderSettings.Current;
 }

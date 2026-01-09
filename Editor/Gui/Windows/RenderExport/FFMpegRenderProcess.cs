@@ -143,7 +143,7 @@ internal static class FFMpegRenderProcess
         
         // Basic validation...
         
-        renderSettings.FrameCount = 100; // Placeholder for timing calc
+        // renderSettings.FrameCount = 100; // Placeholder removed
         // Need to convert renderSettings to RenderSettings type for RenderTiming?
         // Or duplicate RenderTiming logic.
         // Quick hack: Create a temp RenderSettings object to pass to utils?
