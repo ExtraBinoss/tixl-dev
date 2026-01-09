@@ -63,6 +63,7 @@ internal static partial class WindowManager
                 new VariationsWindow(),
                 new ExplorationWindow(),
                 new RenderWindow(),
+                new FFMpegRenderWindow(),
                 new IoViewWindow(),
                 Program.ConsoleLogWindow,
                 UtilitiesWindow,    // item shown in TiXL > Development menu
