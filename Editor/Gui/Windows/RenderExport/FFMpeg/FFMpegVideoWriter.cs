@@ -85,6 +85,7 @@ internal class FFMpegVideoWriter : IDisposable
                               .WithSpeedPreset(Preset);
 
                        // Codec specific options
+                       Console.WriteLine($"FFMpegVideoWriter: {Codec}");
                        switch (Codec)
                        {
                            case FFMpegRenderSettings.SelectedCodec.H264:
