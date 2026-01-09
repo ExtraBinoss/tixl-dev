@@ -28,17 +28,22 @@ internal class FFMpegVideoWriter : IDisposable
     public int Bitrate { get; set; } = 25_000_000;
     public double Framerate { get; set; } = 60.0;
     public bool ExportAudio { get; set; }
+    public FFMpegRenderSettings.SelectedCodec Codec { get; set; } = FFMpegRenderSettings.SelectedCodec.H264;
+    public int Crf { get; set; } = 23;
+    public Speed Preset { get; set; } = Speed.Fast;
 
     private readonly Int2 _videoPixelSize;
     // private readonly ConcurrentQueue<byte[]> _videoFrames = new(); // Replaced by BlockingCollection
     private Task? _ffmpegTask;
     private bool _isWriting;
+    private readonly Action? _onPipeBroken;
 
     public FFMpegVideoWriter(string filePath, Int2 videoPixelSize, bool exportAudio)
     {
         FilePath = filePath;
         _videoPixelSize = videoPixelSize;
         ExportAudio = exportAudio;
+        _onPipeBroken = () => _isWriting = false;
     }
 
     public void Start()
@@ -74,14 +79,69 @@ internal class FFMpegVideoWriter : IDisposable
             {
                 var args = FFMpegArguments
                    .FromPipeInput(videoSource)
-                   .OutputToFile(FilePath, true, options => options
-                       .WithVideoCodec(VideoCodec.LibX264)
-                       .WithVideoBitrate((int)(Bitrate / 1000))
-                       .ForcePixelFormat("yuv420p")
-                       .UsingMultithreading(true)
-                       .ForceFormat("mp4")
-                       .WithSpeedPreset(Speed.Fast) 
-                   );
+                   .OutputToFile(FilePath, true, options => {
+                       // Common options
+                       options.UsingMultithreading(true)
+                              .WithSpeedPreset(Preset);
+
+                       // Codec specific options
+                       switch (Codec)
+                       {
+                           case FFMpegRenderSettings.SelectedCodec.H264:
+                                options.WithVideoCodec(VideoCodec.LibX264)
+                                       .WithVideoBitrate((int)(Bitrate / 1000))
+                                       .ForcePixelFormat("yuv420p") // H.264 standard
+                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
+                                if (Crf >= 0) options.WithConstantRateFactor(Crf);
+                                options.ForceFormat("mp4");
+                                break;
+                           case FFMpegRenderSettings.SelectedCodec.H265:
+                                options.WithVideoCodec(VideoCodec.LibX265)
+                                       .WithVideoBitrate((int)(Bitrate / 1000))
+                                       .ForcePixelFormat("yuv420p") // H.265 standard
+                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
+                                if (Crf >= 0) options.WithConstantRateFactor(Crf);
+                                options.ForceFormat("mp4");
+                                break;
+                           case FFMpegRenderSettings.SelectedCodec.ProRes:
+                                options.WithVideoCodec("prores_ks") 
+                                       .WithVideoBitrate((int)(Bitrate / 1000))
+                                       .ForcePixelFormat("yuv422p10le") 
+                                       .ForceFormat("mov");
+                                break;
+                           case FFMpegRenderSettings.SelectedCodec.Hap:
+                                options.WithVideoCodec("hap")
+                                       .ForceFormat("mov")
+                                       .ForcePixelFormat("rgba")
+                                       .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
+                                break;
+                           case FFMpegRenderSettings.SelectedCodec.HapAlpha:
+                                options.WithVideoCodec("hap")
+                                       .WithCustomArgument("-format hap_alpha")
+                                       .ForceFormat("mov")
+                                       .ForcePixelFormat("rgba")
+                                       .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
+                                break;
+                           case FFMpegRenderSettings.SelectedCodec.Vp9:
+                                options.WithVideoCodec("libvpx-vp9")
+                                       .WithVideoBitrate((int)(Bitrate / 1000))
+                                       .ForcePixelFormat("yuv420p")
+                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
+                                if (Crf >= 0) options.WithConstantRateFactor(Crf);
+                                options.ForceFormat("webm");
+                                break;
+                           case FFMpegRenderSettings.SelectedCodec.Vp9Alpha:
+                                options.WithVideoCodec("libvpx-vp9")
+                                       .WithVideoBitrate((int)(Bitrate / 1000))
+                                       .ForcePixelFormat("yuva420p") // Alpha channel
+                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2") 
+                                       .WithCustomArgument("-auto-alt-ref 0"); // Fix for transparency error
+                                if (Crf >= 0) options.WithConstantRateFactor(Crf);
+                                options.ForceFormat("webm");
+                                Log.Debug($"FFMpegVideoWriter: Vp9Alpha");
+                                break;
+                       }
+                   });
 
                 await args.ProcessAsynchronously();
             }
@@ -98,7 +158,7 @@ internal class FFMpegVideoWriter : IDisposable
     {
         foreach (var frame in _frameBuffer.GetConsumingEnumerable())
         {
-            yield return new FFMpegRawFrame(frame, _videoPixelSize.Width, _videoPixelSize.Height);
+            yield return new FFMpegRawFrame(frame, _videoPixelSize.Width, _videoPixelSize.Height, _onPipeBroken);
         }
     }
     
@@ -137,12 +197,19 @@ internal class FFMpegVideoWriter : IDisposable
 
             if (_isWriting)
             {
-                _frameBuffer.Add(frameData);
+                if (!_frameBuffer.IsAddingCompleted)
+                {
+                    _frameBuffer.Add(frameData);
+                }
             }
             else
             {
                 Log.Debug("FFMpegVideoWriter: Skipping frame add after dispose.");
             }
+        }
+        catch (InvalidOperationException)
+        {
+            // Collection completed or disposed, ignore
         }
         catch (Exception e)
         {
@@ -179,27 +246,52 @@ internal class FFMpegRawFrame : IVideoFrame
     public int Width { get; }
     public int Height { get; }
     public string Format => "bgra";
+    private readonly Action? _onPipeBroken;
 
-    public FFMpegRawFrame(byte[] data, int width, int height)
+    public FFMpegRawFrame(byte[] data, int width, int height, Action? onPipeBroken)
     {
         _data = data;
         Width = width;
         Height = height;
+        _onPipeBroken = onPipeBroken;
     }
 
     public void Serialize(Stream pipe)
     {
-        pipe.Write(_data, 0, _data.Length);
+        try 
+        {
+            pipe.Write(_data, 0, _data.Length);
+        }
+        catch (IOException ioEx) 
+        { 
+            Log.Debug($"FFMpegVideoWriter: Pipe broken, stopping write: {ioEx.Message}");
+            _onPipeBroken?.Invoke();
+            // Throwing here would be caught by the generator? No, Serialize is called by FFMpegCore.
+            // But we can signal to stop the generator.
+            // Since we can't easily access the writer state from here without a reference, 
+            // we rely on the upper layer handling or just ignoring subsequent writes.
+            // But earlier we caught this in global try-catch? No, this is inside FFMpegRawFrame.
+        }
+        catch (Exception ex) { Log.Error($"FFMpegVideoWriter: Stream error: {ex.Message}"); }
     }
 
     public Task SerializeAsync(Stream pipe)
     {
-        return pipe.WriteAsync(_data, 0, _data.Length);
+        return SerializeAsync(pipe, CancellationToken.None);
     }
     
     // Fix: Implement interface properly for newer FFMpegCore
-    public Task SerializeAsync(Stream pipe, CancellationToken token)
+    public async Task SerializeAsync(Stream pipe, CancellationToken token)
     {
-         return pipe.WriteAsync(_data, 0, _data.Length, token);
+        try 
+        {
+             await pipe.WriteAsync(_data, 0, _data.Length, token);
+        }
+        catch (IOException ioEx) 
+        { 
+             Log.Debug($"FFMpegVideoWriter: Pipe broken (Async), stopping write: {ioEx.Message}");
+             _onPipeBroken?.Invoke();
+        }
+        catch (Exception ex) { Log.Error($"FFMpegVideoWriter: Stream error (Async): {ex.Message}"); }
     }
 }

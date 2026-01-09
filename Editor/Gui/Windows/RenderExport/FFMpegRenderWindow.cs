@@ -43,13 +43,21 @@ internal sealed class FFMpegRenderWindow : Window
 
     private void DrawInstallUi()
     {
-        ImGui.Text("FFMpeg is missing.");
-        ImGui.Spacing();
-        if (ImGui.Button("Download FFMpeg Suite"))
+        if (FFMpegRenderProcess.State == FFMpegRenderProcess.States.Downloading)
         {
-            FFMpegRenderProcess.InstallFFMpeg();
+             ImGui.Text("Downloading FFMpeg...");
+             ImGui.ProgressBar(FFMpegRenderProcess.DownloadProgress, new Vector2(-1, 0));
         }
-        ImGui.TextDisabled("This will download ffmpeg.exe and ffprobe.exe using ffbinaries.");
+        else
+        {
+            ImGui.Text("FFMpeg is missing.");
+            ImGui.Spacing();
+            if (ImGui.Button("Download FFMpeg Suite"))
+            {
+                FFMpegRenderProcess.InstallFFMpeg();
+            }
+            ImGui.TextDisabled("This will download ffmpeg.exe and ffprobe.exe using ffbinaries.");
+        }
     }
 
     private void DrawInnerContent()
@@ -204,6 +212,24 @@ internal sealed class FFMpegRenderWindow : Window
                                  FileOperations.FilePickerTypes.Folder);
 
         FormInputs.AddCheckBox("Export Audio", ref FFMpegRenderSettings.ExportAudio);
+        
+        FormInputs.AddVerticalSpace();
+        FormInputs.AddCheckBox("Advanced Settings", ref FFMpegRenderSettings.ShowAdvancedSettings);
+        
+        if (FFMpegRenderSettings.ShowAdvancedSettings)
+        {
+            ImGui.Indent();
+            FormInputs.AddEnumDropdown(ref FFMpegRenderSettings.Codec, "Codec");
+            
+            if (FFMpegRenderSettings.Codec == FFMpegRenderSettings.SelectedCodec.H264 || 
+                FFMpegRenderSettings.Codec == FFMpegRenderSettings.SelectedCodec.H265 ||
+                FFMpegRenderSettings.Codec == FFMpegRenderSettings.SelectedCodec.Vp9)
+            {
+                FormInputs.AddInt("CRF Quality", ref FFMpegRenderSettings.CrfQuality, 0, 51, 1, "Lower is better quality. 0 is lossless (for H.264), 23 is default.");
+                FormInputs.AddEnumDropdown(ref FFMpegRenderSettings.Preset, "Preset");
+            }
+            ImGui.Unindent();
+        }
     }
 
     private static void DrawRenderingControls()

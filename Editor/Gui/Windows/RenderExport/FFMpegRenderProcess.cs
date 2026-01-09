@@ -44,7 +44,10 @@ internal static class FFMpegRenderProcess
         NoValidOutputTexture,
         WaitingForExport,
         Exporting,
+        Downloading // New state
     }
+    
+    public static float DownloadProgress { get; private set; }
 
     public static void Update()
     {
@@ -138,8 +141,10 @@ internal static class FFMpegRenderProcess
             return;
         }
         
-        // Setup filename
-        var targetFilePath = RenderPaths.ResolveProjectRelativePath(UserSettings.Config.RenderVideoFilePath);
+        // Setup filename with correct extension for codec
+        var basePath = RenderPaths.ResolveProjectRelativePath(UserSettings.Config.RenderVideoFilePath);
+        var correctExtension = FFMpegRenderSettings.GetFileExtension(renderSettings.Codec);
+        var targetFilePath = Path.ChangeExtension(basePath, correctExtension);
         
         // Basic validation...
         
@@ -170,7 +175,10 @@ internal static class FFMpegRenderProcess
         _videoWriter = new FFMpegVideoWriter(targetFilePath, MainOutputOriginalSize, renderSettings.ExportAudio)
                            {
                                Bitrate = renderSettings.Bitrate,
-                               Framerate = renderSettings.Fps
+                               Framerate = renderSettings.Fps,
+                               Codec = renderSettings.Codec,
+                               Crf = renderSettings.CrfQuality,
+                               Preset = renderSettings.Preset
                            };
                            
         _videoWriter.Start();
@@ -219,18 +227,31 @@ internal static class FFMpegRenderProcess
     public static async void InstallFFMpeg()
     {
         var folder = GetFFBinariesFolder();
+        State = States.Downloading;
+        DownloadProgress = 0f;
+        
         try 
         {
             if (!Directory.Exists(folder))
                 Directory.CreateDirectory(folder);
 
             Log.Info($"Downloading FFMpeg to {folder}...");
-            await FFMpegDownloader.DownloadBinaries(FFMpegCore.Extensions.Downloader.Enums.FFMpegVersions.LatestAvailable, options: new FFOptions { BinaryFolder = folder });
+            
+            // Progress not supported in this version of FFMpegCore.Extensions.Downloader
+            await FFMpegDownloader.DownloadBinaries(FFMpegCore.Extensions.Downloader.Enums.FFMpegVersions.LatestAvailable, 
+                                                    options: new FFOptions { BinaryFolder = folder });
+            
+            DownloadProgress = 1.0f;
+            
             Log.Info("FFMpeg download complete.");
         }
         catch(Exception e)
         {
             Log.Error($"Failed to download FFMpeg: {e.Message}");
+        }
+        finally
+        {
+            State = States.NoOutputWindow; // Reset state or let Update() fix it
         }
         
         // Configure options

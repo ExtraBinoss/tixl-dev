@@ -1,6 +1,8 @@
 #nullable enable
 namespace T3.Editor.Gui.Windows.RenderExport;
 
+using FFMpegCore.Enums;
+
 internal sealed class FFMpegRenderSettings
 {
     public static readonly FFMpegRenderSettings Current = new()
@@ -36,8 +38,37 @@ internal sealed class FFMpegRenderSettings
     internal enum RenderModes
     {
         Video,
-        // ImageSequence // FFMpeg is mostly for video, but could do images. Let's comment out for now to simplify or keep it?
-        // Let's keep it simple: Video only for now as FFMpeg major gain is video codecs.
+    }
+
+    public bool ShowAdvancedSettings;
+    public SelectedCodec Codec = SelectedCodec.H264;
+    public int CrfQuality = 23;
+    public Speed Preset = Speed.Fast;
+
+    internal enum SelectedCodec
+    {
+        H264,
+        H265,
+        ProRes,
+        Hap,
+        HapAlpha,
+        Vp9,
+        Vp9Alpha,
+    }
+    
+    public static string GetFileExtension(SelectedCodec codec)
+    {
+        return codec switch
+        {
+            SelectedCodec.H264 => ".mp4",
+            SelectedCodec.H265 => ".mp4",
+            SelectedCodec.ProRes => ".mov",
+            SelectedCodec.Hap => ".mov",
+            SelectedCodec.HapAlpha => ".mov",
+            SelectedCodec.Vp9 => ".webm",
+            SelectedCodec.Vp9Alpha => ".webm",
+            _ => ".mp4"
+        };
     }
 
     internal enum TimeReference
