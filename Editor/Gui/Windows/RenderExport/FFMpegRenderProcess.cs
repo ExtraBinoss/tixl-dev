@@ -94,7 +94,7 @@ internal static class FFMpegRenderProcess
         bool success = true;
         try 
         {
-            _videoWriter?.ProcessFrames(MainOutputTexture, ref audioFrame, RenderAudioInfo.SoundtrackChannels(), RenderAudioInfo.SoundtrackSampleRate());
+            _videoWriter?.ProcessFrames(MainOutputTexture, ref audioFrame);
             _frameIndex++;
              // We need to advance time!
             RenderTiming.SetPlaybackTimeForFrame(ref _renderSettings, _frameIndex, _frameCount, ref _runtime);
@@ -172,7 +172,12 @@ internal static class FFMpegRenderProcess
         _frameCount = Math.Max(_renderSettings.FrameCount, 0);
         _exportStartedTime = Playback.RunTimeInSecs;
 
-        _videoWriter = new FFMpegVideoWriter(targetFilePath, MainOutputOriginalSize, renderSettings.ExportAudio)
+        _exportStartedTime = Playback.RunTimeInSecs;
+
+        var channels = RenderAudioInfo.SoundtrackChannels();
+        var sampleRate = RenderAudioInfo.SoundtrackSampleRate();
+
+        _videoWriter = new FFMpegVideoWriter(targetFilePath, MainOutputOriginalSize, renderSettings.ExportAudio, sampleRate, channels)
                            {
                                Bitrate = renderSettings.Bitrate,
                                Framerate = renderSettings.Fps,
