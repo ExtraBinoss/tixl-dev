@@ -295,20 +295,52 @@ internal sealed class FFMpegRenderWindow : Window
     
     private void DrawOverwriteDialog()
     {
-        ImGui.SetNextWindowSize(new Vector2(600, 200));
+        ImGui.SetNextWindowSize(new Vector2(600, 300));
         if (ImGui.BeginPopupModal("Overwrite?", ref _isOverwriteDialogNotUsed, ImGuiWindowFlags.NoResize))
         {
+             var windowWidth = ImGui.GetContentRegionAvail().X;
+             
              ImGui.PushFont(Fonts.FontLarge);
-             ImGui.TextUnformatted("Target already exists");
+             var title = "Target already exists";
+             var titleWidth = ImGui.CalcTextSize(title).X;
+             ImGui.SetCursorPosX((windowWidth - titleWidth) * 0.5f);
+             ImGui.TextUnformatted(title);
              ImGui.PopFont();
              
              FormInputs.AddVerticalSpace(10);
+             
              ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
-             ImGui.TextWrapped($"The target output already exists:\n{_targetPathForOverwrite}");
+             var msg = "The target output already exists:";
+             var msgWidth = ImGui.CalcTextSize(msg).X;
+             ImGui.SetCursorPosX((windowWidth - msgWidth) * 0.5f);
+             ImGui.TextUnformatted(msg);
+             
+             FormInputs.AddVerticalSpace(5);
+             
+             ImGui.PushFont(Fonts.FontSmall);
+             var pathSize = ImGui.CalcTextSize(_targetPathForOverwrite);
+             if (pathSize.X < windowWidth - 40) // Allow some padding
+             {
+                 ImGui.SetCursorPosX((windowWidth - pathSize.X) * 0.5f);
+                 ImGui.TextUnformatted(_targetPathForOverwrite);
+             }
+             else
+             {
+                 ImGui.TextWrapped(_targetPathForOverwrite);
+             }
+             ImGui.PopFont();
+             
              ImGui.PopStyleColor();
+             
              FormInputs.AddVerticalSpace(20);
              
-             if (ImGui.Button("Overwrite", new Vector2(150, 40)))
+             // Buttons
+             var buttonWidth = 150f;
+             var spacing = ImGui.GetStyle().ItemSpacing.X;
+             var totalButtonWidth = buttonWidth * 2 + spacing;
+             ImGui.SetCursorPosX((windowWidth - totalButtonWidth) * 0.5f);
+             
+             if (ImGui.Button("Overwrite", new Vector2(buttonWidth, 40)))
              {
                  FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
                  ImGui.CloseCurrentPopup();
@@ -316,7 +348,7 @@ internal sealed class FFMpegRenderWindow : Window
              
              ImGui.SameLine();
              
-             if (ImGui.Button("Cancel", new Vector2(150, 40)))
+             if (ImGui.Button("Cancel", new Vector2(buttonWidth, 40)))
              {
                  ImGui.CloseCurrentPopup();
              }

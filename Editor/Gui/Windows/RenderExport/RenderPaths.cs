@@ -68,41 +68,29 @@ internal static partial class RenderPaths
         
         if (settings.AutoIncrementSubFolder)
         {
-            var targetToIncrement = settings.CreateSubFolder ? subFolder : prefix;
+            var folder = ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath ?? string.Empty);
             
-            // Logic: if current exists, show next.
-            // Construct full path to check existence.
-            var baseFolder = ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath ?? string.Empty);
-            var checkPath = settings.CreateSubFolder ? Path.Combine(baseFolder, subFolder) : Path.Combine(baseFolder, prefix);
-            
-            // This existence check logic is tricky for display vs 'getNext'.
-            // If v01 exists, we expect v02.
-            // Using 'GetNextVersionForFolder' recursive logic here might be better.
-            
-            // Adopting user's logic roughly:
-            if (IsFilenameIncrementable(targetToIncrement)) 
+            if (settings.CreateSubFolder)
             {
-                // We need to check if it exists to verify if we should increment for display
-                // Actually, let's keep it simple: If we are rendering, we calculate the target.
-                // If it exists, we prompt overwrite.
-                // We DON'T automagically increment simply for display unless we specifically want "Next Version" semantics.
-                // The legacy behavior was "Updates setting AFTER render".
-                
-                // But the user's snippet calls GetNextIncrementedPath if !IsFilenameIncrementable? No.
-                // "if (settings.AutoIncrementVersionNumber && !IsFilenameIncrementable(targetPath))" -> This adds v01 if missing.
-                
-                // Let's implement robust "Add suffix if missing" logic here.
-                 if (!IsFilenameIncrementable(targetToIncrement))
-                 {
-                    var incremented = GetNextIncrementedPath(targetToIncrement);
-                    if (settings.CreateSubFolder) subFolder = incremented;
-                    else prefix = incremented;
-                 }
+                var nextFolderPath = GetNextVersionForFolder(folder, subFolder);
+                subFolder = Path.GetFileName(nextFolderPath);
+            }
+            else
+            {
+               // Prefix increment logic
+               var targetToIncrement = prefix;
+               if (!IsFilenameIncrementable(targetToIncrement) || FileExists(Path.Combine(folder, prefix), mode))
+               {
+                   var testPath = Path.Combine(folder, prefix);
+                   if (IsFilenameIncrementable(prefix))
+                   {
+                   }
+               }
             }
         }
 
-        var folder = ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath ?? string.Empty);
-        var finalBase = settings.CreateSubFolder ? Path.Combine(folder, subFolder, prefix) : Path.Combine(folder, prefix);
+        var baseFolder = ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath ?? string.Empty);
+        var finalBase = settings.CreateSubFolder ? Path.Combine(baseFolder, subFolder, prefix) : Path.Combine(baseFolder, prefix);
         
         return $"{finalBase}_%04d.{settings.FileFormat.ToString().ToLower()}";
     }
@@ -121,7 +109,6 @@ internal static partial class RenderPaths
             
             if (directory != null && Directory.Exists(directory))
             {
-                // If the directory exists, check if it contains any files or subdirectories
                 try
                 {
                     return Directory.EnumerateFileSystemEntries(directory).Any();
