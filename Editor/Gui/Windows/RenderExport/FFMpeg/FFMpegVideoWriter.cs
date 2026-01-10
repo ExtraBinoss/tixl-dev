@@ -12,6 +12,10 @@ using T3.Core.Resource;
 
 // Fix: explicit alias to avoid ambiguity between T3.Core.DataTypes.Texture2D and SharpDX.Direct3D11.Texture2D
 using CoreTexture2D = T3.Core.DataTypes.Texture2D;
+using FFMpegCore.Arguments;
+using T3.Core.IO;
+using Microsoft.Build.Evaluation;
+using Microsoft.CodeAnalysis.Options;
 
 namespace T3.Editor.Gui.Windows.RenderExport.FFMpeg;
 
@@ -24,7 +28,7 @@ internal class FFMpegVideoWriter : IDisposable
     public FFMpegRenderSettings.SelectedCodec Codec { get; set; } = FFMpegRenderSettings.SelectedCodec.OpenH264;
     public int Crf { get; set; } = 23;
     public Speed Preset { get; set; } = Speed.Fast;
-    
+
     private readonly int _audioSampleRate;
     private readonly int _audioChannels;
 
@@ -35,7 +39,7 @@ internal class FFMpegVideoWriter : IDisposable
     private Task? _ffmpegTask;
     private bool _isWriting;
     private readonly Action? _onPipeBroken;
-    
+
     // Two-pass audio: write audio to temp file, then mux after video is done
     private string? _tempAudioFile;
     private FileStream? _audioFileStream;
@@ -102,14 +106,13 @@ internal class FFMpegVideoWriter : IDisposable
                    .FromPipeInput(videoSource);
 
                 // For first pass, output to temp file if we have audio to mux later
-                var firstPassOutput = ExportAudio 
+                var firstPassOutput = ExportAudio
                     ? Path.Combine(Path.GetTempPath(), $"tixl_video_{Guid.NewGuid():N}{Path.GetExtension(FilePath)}")
                     : FilePath;
 
                 var processor = args.OutputToFile(firstPassOutput, true, options => {
                        // Common options
-                       options.UsingMultithreading(true)
-                              .WithSpeedPreset(Preset);
+                       options.UsingMultithreading(true);
                         
                        // No audio in first pass - will mux later
                        options.WithCustomArgument("-an"); // Explicitly no audio
@@ -131,6 +134,7 @@ internal class FFMpegVideoWriter : IDisposable
                                    break;
                                case FFMpegRenderSettings.ImageFileFormats.WebP:
                                    options.WithVideoCodec("libwebp")
+                                          .ForcePixelFormat("bgra")
                                           .WithCustomArgument("-lossless 1")
                                           .WithCustomArgument("-quality 100")
                                           .WithCustomArgument("-compression_level 6");
@@ -140,6 +144,7 @@ internal class FFMpegVideoWriter : IDisposable
                        }
                        else 
                        {
+                           options.WithSpeedPreset(Preset);
                            Console.WriteLine($"FFMpegVideoWriter: {Codec}");
                            switch (Codec)
                            {
@@ -184,12 +189,12 @@ internal class FFMpegVideoWriter : IDisposable
                    );
 
                 await processor.ProcessAsynchronously();
-                
+
                 // Second pass: Mux audio if we have it
                 if (ExportAudio && _tempAudioFile != null && File.Exists(_tempAudioFile))
                 {
                     await MuxAudioAsync(firstPassOutput, _tempAudioFile, FilePath);
-                    
+
                     // Cleanup temp video file
                     try { File.Delete(firstPassOutput); } catch { }
                 }
@@ -200,20 +205,23 @@ internal class FFMpegVideoWriter : IDisposable
             }
         });
     }
-    
+
     private async Task MuxAudioAsync(string videoFile, string audioFile, string outputFile)
     {
         try
         {
             Log.Debug($"Muxing audio into video: {outputFile}");
-            
+
             // Determine audio codec based on video codec
             var audioCodec = Codec switch
             {
                 FFMpegRenderSettings.SelectedCodec.Vp9 => "libopus",
                 _ => "aac"
             };
-            
+            var volumeFilter = (AudioFilterOptions options) =>
+            {
+                options.Arguments.Add(new VolumeArgument(ProjectSettings.Config.PlaybackVolume));
+            };
             var args = FFMpegArguments
                 .FromFileInput(videoFile)
                 .AddFileInput(audioFile, true, options =>
@@ -226,9 +234,10 @@ internal class FFMpegVideoWriter : IDisposable
                 {
                     options.CopyChannel() // Copy video stream as-is
                            .WithAudioCodec(audioCodec)
+                           .WithAudioFilters(volumeFilter)
                            .WithCustomArgument("-shortest"); // Match shortest stream
                 });
-                
+
             await args.ProcessAsynchronously();
             Log.Debug("Audio mux completed successfully");
         }
@@ -236,11 +245,11 @@ internal class FFMpegVideoWriter : IDisposable
         {
             Log.Error($"Failed to mux audio: {e.Message}");
             // If muxing fails, at least copy the video-only file
-            try 
-            { 
+            try
+            {
                 File.Copy(videoFile, outputFile, true);
                 Log.Warning("Audio mux failed, exported video without audio.");
-            } 
+            }
             catch { }
         }
         finally
@@ -259,7 +268,7 @@ internal class FFMpegVideoWriter : IDisposable
             yield return new FFMpegRawFrame(frame, _videoPixelSize.Width, _videoPixelSize.Height, _onPipeBroken);
         }
     }
-    
+
     public void ProcessFrames(CoreTexture2D gpuTexture, ref byte[] audioFrame)
     {
         // Capture audio frame for the callback
@@ -282,7 +291,7 @@ internal class FFMpegVideoWriter : IDisposable
         {
             var frameSize = width * height * 4;
             var frameData = new byte[frameSize];
-            
+
             for (var y = 0; y < height; y++)
             {
                 inputStream.Position = (long)y * dataBox.RowPitch;
@@ -336,7 +345,7 @@ internal class FFMpegVideoWriter : IDisposable
     {
         _isWriting = false;
         _frameBuffer.CompleteAdding();
-        
+
         // Close audio file stream first
         lock (_audioLock)
         {
@@ -344,8 +353,8 @@ internal class FFMpegVideoWriter : IDisposable
             _audioFileStream?.Dispose();
             _audioFileStream = null;
         }
-        
-        try 
+
+        try
         {
             // Wait longer for muxing to complete
             _ffmpegTask?.Wait(ExportAudio ? 30000 : 5000);
@@ -384,12 +393,12 @@ internal class FFMpegRawFrame(byte[] data, int width, int height, Action? onPipe
     {
         return SerializeAsync(pipe, CancellationToken.None);
     }
-    
+
     public async Task SerializeAsync(Stream pipe, CancellationToken token)
     {
         try
         {
-             await pipe.WriteAsync(_data, token);
+            await pipe.WriteAsync(_data, token);
         }
         catch (IOException ioEx)
         {
