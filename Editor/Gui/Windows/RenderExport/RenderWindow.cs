@@ -114,10 +114,17 @@ internal sealed class RenderWindow : Window
         // Resolution as Percentage with Popover
         DrawResolutionPopover();
 
+        // Motion Blur Samples
         if (FormInputs.AddInt("Motion Blur Samples", ref RenderSettings.OverrideMotionBlurSamples, -1, 50, 1,
-                              "This requires a [RenderWithMotionBlur] operator. Please check its documentation."))
+                              "Number of motion blur samples. Set to -1 to disable. Requires [RenderWithMotionBlur] operator."))
         {
             RenderSettings.OverrideMotionBlurSamples = Math.Clamp(RenderSettings.OverrideMotionBlurSamples, -1, 50);
+        }
+
+        // Show hint when motion blur is disabled
+        if (RenderSettings.OverrideMotionBlurSamples == -1)
+        {
+            FormInputs.AddHint("Motion blur is disabled. Add [RenderWithMotionBlur] to your graph and set samples > 0.");
         }
     }
 
@@ -125,10 +132,8 @@ internal sealed class RenderWindow : Window
     {
         var currentPct = (int)(RenderSettings.ResolutionFactor * 100);
 
-        FormInputs.SetIndentToParameters();
-        ImGui.TextUnformatted("Resolution");
-        ImGui.SameLine();
-        FormInputs.SetCursorToParameterEdit();
+        // Use DrawInputLabel for proper alignment with other form inputs
+        FormInputs.DrawInputLabel("Resolution");
 
         CustomComponents.DrawPopover("ResolutionPopover", $"{currentPct}%", () =>
         {
@@ -164,7 +169,7 @@ internal sealed class RenderWindow : Window
             ImGui.SetNextItemWidth(60 * T3Ui.UiScaleFactor);
             if (ImGui.InputFloat("##CustomRes", ref customPct, 0, 0, "%.0f"))
             {
-                customPct = Math.Clamp(customPct, 12.5f, 400f);
+                customPct = Math.Clamp(customPct, 1f, 400f);
                 RenderSettings.ResolutionFactor = customPct / 100f;
             }
             ImGui.SameLine();
