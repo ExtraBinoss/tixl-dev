@@ -2,7 +2,7 @@ using FFMpegCore.Arguments;
 
 namespace T3.Editor.Gui.Windows.RenderExport.FFMpeg;
 /// <summary>
-///     Mix channels with specific gain levels.
+///     Changes the volume of the audio.
 /// </summary>
 public class VolumeArgument : IAudioFilterArgument
 {
