@@ -25,7 +25,8 @@ internal sealed class FFMpegRenderSettings
     public int Bitrate = 25_000_000;
     public bool ExportAudio = true;
     
-    public ImageFileFormats FileFormat = ImageFileFormats.Png;
+    public bool AutoIncrementVideo = true;
+    public ImageFileFormats FileFormat = ImageFileFormats.WebP;
     public bool CreateSubFolder = true;
     public bool AutoIncrementSubFolder = true;
 
@@ -44,6 +45,7 @@ internal sealed class FFMpegRenderSettings
     {
         Png,
         Jpg,
+        WebP,
         // Tiff, // FFMpeg supports it, but keep strict list for now
     }
 

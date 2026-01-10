@@ -185,9 +185,24 @@ internal static class FFMpegRenderProcess
         }
         else
         {
-             // We should enforce correct extension just in case.
              var correctExtension = FFMpegRenderSettings.GetFileExtension(renderSettings.Codec);
              targetFilePath = Path.ChangeExtension(targetFilePath, correctExtension);
+
+             if (renderSettings.AutoIncrementVideo)
+             {
+                 if (!RenderPaths.IsFilenameIncrementable(targetFilePath))
+                 {
+                     targetFilePath = RenderPaths.GetNextIncrementedPath(targetFilePath);
+                 }
+
+                 while (File.Exists(targetFilePath))
+                 {
+                     targetFilePath = RenderPaths.GetNextIncrementedPath(targetFilePath);
+                 }
+                 
+                 UserSettings.Config.RenderVideoFilePath = targetFilePath;
+                 UserSettings.Save();
+             }
         }
         
         LastOutputPath = targetFilePath;

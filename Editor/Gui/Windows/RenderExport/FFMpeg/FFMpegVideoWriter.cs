@@ -129,6 +129,12 @@ internal class FFMpegVideoWriter : IDisposable
                                    options.WithVideoCodec("mjpeg")
                                           .WithCustomArgument("-q:v 2"); // High quality JPEG
                                    break;
+                               case FFMpegRenderSettings.ImageFileFormats.WebP:
+                                   options.WithVideoCodec("libwebp")
+                                          .WithCustomArgument("-lossless 1")
+                                          .WithCustomArgument("-quality 100")
+                                          .WithCustomArgument("-compression_level 6");
+                                   break;
                                // Add others if needed
                            }
                        }

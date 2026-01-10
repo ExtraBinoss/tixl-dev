@@ -52,12 +52,19 @@ internal static partial class RenderPaths
 
         if (mode == FFMpegRenderSettings.RenderModes.Video)
         {
-            // Note: FFMpegRenderSettings doesn't have AutoIncrementVersionNumber boolean explicitly, 
-            // but the filename itself implies it if "v01" is present.
-            // Assuming users want to see the NEXT path if it exists.
-            if (IsFilenameIncrementable(targetPath) && File.Exists(targetPath))
+            if (settings.AutoIncrementVideo)
             {
-               return GetNextIncrementedPath(targetPath);
+                var testPath = targetPath;
+                if (!IsFilenameIncrementable(testPath))
+                {
+                    testPath = GetNextIncrementedPath(testPath);
+                }
+
+                while (File.Exists(testPath))
+                {
+                    testPath = GetNextIncrementedPath(testPath);
+                }
+                return testPath;
             }
             return targetPath;
         }

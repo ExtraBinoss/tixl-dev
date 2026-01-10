@@ -198,6 +198,7 @@ internal sealed class FFMpegRenderWindow : Window
                                  null,
                                  "Using v01 in the file name will enable auto incrementation.",
                                  FileOperations.FilePickerTypes.Folder);
+        FormInputs.AddCheckBox("Auto-Increment Version", ref FFMpegRenderSettings.AutoIncrementVideo);
 
         FormInputs.AddCheckBox("Export Audio", ref FFMpegRenderSettings.ExportAudio);
 
@@ -396,16 +397,19 @@ internal sealed class FFMpegRenderWindow : Window
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, UiColors.BackgroundActive.Fade(0.8f).Rgba);
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, UiColors.BackgroundActive.Fade(0.6f).Rgba);
         
-        var startLabel = FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence && FFMpegRenderSettings.AutoIncrementSubFolder
-                         ? "Render Sequence (Auto-Increment)"
+        bool isAutoIncrement = (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence && FFMpegRenderSettings.AutoIncrementSubFolder) ||
+                               (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.Video && FFMpegRenderSettings.AutoIncrementVideo);
+
+        var startLabel = isAutoIncrement
+                         ? (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence ? "Render Sequence (Auto-Increment)" : "Render Video (Auto-Increment)")
                          : "Start FFMpeg Render";
 
         if (ImGui.Button(startLabel, new Vector2(-1, 0)))
         {
             var targetPath = RenderPaths.GetTargetFilePath(FFMpegRenderSettings.RenderMode);
             
-            // If AutoIncrement is ON for Sequence, we skip overwrite check because we WILL generate a new name in Process
-            bool skipCheck = FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence && FFMpegRenderSettings.AutoIncrementSubFolder;
+            // If AutoIncrement is ON, we skip overwrite check because we WILL generate a new name in Process
+            bool skipCheck = isAutoIncrement;
             
             if (!skipCheck && RenderPaths.FileExists(targetPath, FFMpegRenderSettings.RenderMode))
             {
