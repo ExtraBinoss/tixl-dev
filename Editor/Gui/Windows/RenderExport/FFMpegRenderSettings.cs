@@ -18,7 +18,7 @@ internal sealed class FFMpegRenderSettings
     public float StartInBars;
     public float EndInBars;
     public float Fps;
-    public int OverrideMotionBlurSamples;   // forwarded for operators that might read it
+    public int OverrideMotionBlurSamples;
 
 
     public RenderModes RenderMode = RenderModes.Video;
@@ -29,6 +29,13 @@ internal sealed class FFMpegRenderSettings
     public ImageFileFormats FileFormat = ImageFileFormats.WebP;
     public bool CreateSubFolder = true;
     public bool AutoIncrementSubFolder = true;
+    
+    public bool IsAutoIncrementing => RenderMode switch
+                                      {
+                                          RenderModes.Video         => AutoIncrementVideo,
+                                          RenderModes.ImageSequence => AutoIncrementSubFolder,
+                                          _                         => false
+                                      };
 
     public TimeRanges TimeRange = TimeRanges.Custom;
     public float ResolutionFactor = 1f;
@@ -48,7 +55,6 @@ internal sealed class FFMpegRenderSettings
         Png,
         Jpg,
         WebP,
-        // Tiff, // FFMpeg supports it, but keep strict list for now
     }
 
     public bool ShowAdvancedSettings;

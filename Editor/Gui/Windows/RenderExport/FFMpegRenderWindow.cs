@@ -1,11 +1,9 @@
 #nullable enable
 using ImGuiNET;
-using T3.Core.DataTypes.Vector;
 using T3.Core.Utils;
 using T3.Editor.Gui.Input;
 using T3.Editor.Gui.Styling;
 using T3.Editor.Gui.UiHelpers;
-using FFMpegCore;
 using System.IO;
 using T3.Editor.Gui.Interaction.Timing;
 using T3.Core.SystemUi;
@@ -24,9 +22,9 @@ internal sealed class FFMpegRenderWindow : Window
     {
         FormInputs.AddVerticalSpace(15);
 
-        if (!IsFFMpegInstalled())
+        if (!FFMpegInstallation.IsInstalled())
         {
-            DrawInstallUi();
+            FFMpegInstallation.DrawInstallUi();
             return;
         }
 
@@ -35,32 +33,6 @@ internal sealed class FFMpegRenderWindow : Window
         DrawInnerContent();
     }
 
-    private bool IsFFMpegInstalled()
-    {
-        // Simple check if ffmpeg.exe is configured or accessible
-        // logic to check GlobalFFOptions or PATH
-        // For now, let's assume if we can find the binary or if the user clicked install.
-        return FFMpegRenderProcess.IsFFMpegAvailable();
-    }
-
-    private void DrawInstallUi()
-    {
-        if (FFMpegRenderProcess.State == FFMpegRenderProcess.States.Downloading)
-        {
-            ImGui.Text("Downloading FFMpeg...");
-            ImGui.ProgressBar(FFMpegRenderProcess.DownloadProgress, new Vector2(-1, 0));
-        }
-        else
-        {
-            ImGui.Text("FFMpeg is missing.");
-            ImGui.Spacing();
-            if (ImGui.Button("Download FFMpeg Suite"))
-            {
-                FFMpegRenderProcess.InstallFFMpeg();
-            }
-            ImGui.TextDisabled("This will download ffmpeg.exe and ffprobe.exe using ffbinaries.");
-        }
-    }
 
     private void DrawInnerContent()
     {
@@ -91,11 +63,10 @@ internal sealed class FFMpegRenderWindow : Window
 
         FormInputs.SetIndentToParameters();
         FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.RenderMode, "Output");
-        FormInputs.AddVerticalSpace();
 
         if (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.Video)
-            DrawVideoSettings(FFMpegRenderProcess.MainOutputOriginalSize);
-        else 
+            DrawVideoSettings();
+        else
             DrawImageSequenceSettings();
 
         DrawSummary();
@@ -186,26 +157,33 @@ internal sealed class FFMpegRenderWindow : Window
         FFMpegRenderSettings.FrameCount = (int)Math.Round((end - start) * FFMpegRenderSettings.Fps);
     }
 
-    private void DrawVideoSettings(Int2 size)
+    private static void DrawVideoSettings()
     {
         var bitrateMbps = FFMpegRenderSettings.Bitrate / 1_000_000f;
-        if (FormInputs.AddFloat("Bitrate (Mbps)", ref bitrateMbps, 0.1f, 500f, 0.1f, false, false, "Target bitrate for video encoding in Megabits per second."))
+        if (FormInputs.AddFloat(FFMpegRenderUiStrings.BitrateLabel, ref bitrateMbps, 0.1f, 500f, 0.1f, false, false, FFMpegRenderUiStrings.BitrateTooltip))
         {
             FFMpegRenderSettings.Bitrate = (int)(bitrateMbps * 1_000_000);
         }
 
-        FormInputs.AddFilePicker("File name",
-                                 ref UserSettings.Config.RenderVideoFilePath!,
-                                 ".\\Render\\FFMpeg-v01.mp4 ",
-                                 null,
-                                 null,
-                                 FileOperations.FilePickerTypes.Folder);
-        FormInputs.AddCheckBox("Auto-Increment Version", ref FFMpegRenderSettings.AutoIncrementVideo);
+        var videoPath = UserSettings.Config.RenderVideoFilePath ?? FFMpegRenderUiStrings.DefaultVideoPath;
+        string? directory = Path.GetDirectoryName(videoPath) ?? string.Empty;
+        var filename = Path.GetFileName(videoPath) ?? FFMpegRenderUiStrings.DefaultVideoFilename;
 
-        FormInputs.AddCheckBox("Export Audio", ref FFMpegRenderSettings.ExportAudio);
+        if (FormInputs.AddFilePicker(FFMpegRenderUiStrings.FolderLabel, ref directory, FFMpegRenderUiStrings.DefaultFolderPlaceholder, null, null, FileOperations.FilePickerTypes.Folder))
+        {
+            UserSettings.Config.RenderVideoFilePath = Path.Combine(directory!, filename!);
+        }
 
-        FormInputs.AddVerticalSpace();
-        FormInputs.AddCheckBox("Advanced Settings", ref FFMpegRenderSettings.ShowAdvancedSettings);
+        var nonNullFilename = filename ?? string.Empty;
+        if (FormInputs.AddStringInput(FFMpegRenderUiStrings.FilenameLabel, ref nonNullFilename))
+        {
+            filename = nonNullFilename;
+            UserSettings.Config.RenderVideoFilePath = Path.Combine(directory!, filename!);
+        }
+
+        FormInputs.AddCheckBox(FFMpegRenderUiStrings.AutoIncrementLabel, ref FFMpegRenderSettings.AutoIncrementVideo);
+        FormInputs.AddCheckBox(FFMpegRenderUiStrings.ExportAudioLabel, ref FFMpegRenderSettings.ExportAudio);
+        FormInputs.AddCheckBox(FFMpegRenderUiStrings.AdvancedSettingsLabel, ref FFMpegRenderSettings.ShowAdvancedSettings);
 
         if (FFMpegRenderSettings.ShowAdvancedSettings)
         {
@@ -226,7 +204,7 @@ internal sealed class FFMpegRenderWindow : Window
         }
     }
     
-    private void DrawImageSequenceSettings()
+    private static void DrawImageSequenceSettings()
     {
         FormInputs.AddFilePicker("Main Folder",
                                  ref UserSettings.Config.RenderSequenceFilePath!, 
@@ -250,12 +228,12 @@ internal sealed class FFMpegRenderWindow : Window
         FormInputs.AddEnumDropdown(ref FFMpegRenderSettings.FileFormat, "Format");
         if (FFMpegRenderSettings.FileFormat == FFMpegRenderSettings.ImageFileFormats.WebP)
         {
-            FormInputs.AddInt("WebP Quality", ref FFMpegRenderSettings.WebpQuality, 0, 100, 1, "0 is fastest/lowest, 100 is slowest/best compression in lossless mode.");
-            FormInputs.AddInt("Compression Level", ref FFMpegRenderSettings.WebpCompressionLevel, 0, 6, 1, "0 is fastest, 6 is slowest/highest compression.");
+            FormInputs.AddInt(FFMpegRenderUiStrings.WebpQualityLabel, ref FFMpegRenderSettings.WebpQuality, 0, 100, 1, FFMpegRenderUiStrings.WebpQualityTooltip);
+            FormInputs.AddInt(FFMpegRenderUiStrings.WebpCompressionLabel, ref FFMpegRenderSettings.WebpCompressionLevel, 0, 6, 1, FFMpegRenderUiStrings.WebpCompressionTooltip);
         }
 
-        FormInputs.AddCheckBox("Create subfolder", ref FFMpegRenderSettings.CreateSubFolder);
-        FormInputs.AddCheckBox("Auto-increment version", ref FFMpegRenderSettings.AutoIncrementSubFolder);
+        FormInputs.AddCheckBox(FFMpegRenderUiStrings.CreateSubfolderLabel, ref FFMpegRenderSettings.CreateSubFolder);
+        FormInputs.AddCheckBox(FFMpegRenderUiStrings.AutoIncrementSubfolderLabel, ref FFMpegRenderSettings.AutoIncrementSubFolder);
         
         if (FFMpegRenderSettings.AutoIncrementSubFolder)
         {
@@ -269,7 +247,7 @@ internal sealed class FFMpegRenderWindow : Window
     }
     
     // Helper to resolve target path for UI
-    private string GetCachedTargetFilePath()
+    private static string GetCachedTargetFilePath()
     {
          return RenderPaths.GetExpectedTargetDisplayPath(FFMpegRenderSettings.RenderMode);
     }
@@ -289,81 +267,9 @@ internal sealed class FFMpegRenderWindow : Window
             DrawIdleControls();
         }
 
-        CustomComponents.HelpText(FFMpegRenderProcess.IsExporting ? FFMpegRenderProcess.LastHelpString : _lastHelpString);
-        
-        // Draw Overwrite Dialog
-        if (_showOverwriteDialog)
-        {
-            ImGui.OpenPopup("Overwrite?");
-            _showOverwriteDialog = false;
-        }
-
-        DrawOverwriteDialog();
+        _overwriteDialog.Draw(FFMpegRenderSettings);
     }
     
-    private void DrawOverwriteDialog()
-    {
-        ImGui.SetNextWindowSize(new Vector2(600, 300));
-        if (ImGui.BeginPopupModal("Overwrite?", ref _isOverwriteDialogNotUsed, ImGuiWindowFlags.NoResize))
-        {
-             var windowWidth = ImGui.GetContentRegionAvail().X;
-             
-             ImGui.PushFont(Fonts.FontLarge);
-             var title = "Target already exists";
-             var titleWidth = ImGui.CalcTextSize(title).X;
-             ImGui.SetCursorPosX((windowWidth - titleWidth) * 0.5f);
-             ImGui.TextUnformatted(title);
-             ImGui.PopFont();
-             
-             FormInputs.AddVerticalSpace(10);
-             
-             ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
-             var msg = "The target output already exists:";
-             var msgWidth = ImGui.CalcTextSize(msg).X;
-             ImGui.SetCursorPosX((windowWidth - msgWidth) * 0.5f);
-             ImGui.TextUnformatted(msg);
-             
-             FormInputs.AddVerticalSpace(5);
-             
-             ImGui.PushFont(Fonts.FontSmall);
-             var pathSize = ImGui.CalcTextSize(_targetPathForOverwrite);
-             if (pathSize.X < windowWidth - 40) // Allow some padding
-             {
-                 ImGui.SetCursorPosX((windowWidth - pathSize.X) * 0.5f);
-                 ImGui.TextUnformatted(_targetPathForOverwrite);
-             }
-             else
-             {
-                 ImGui.TextWrapped(_targetPathForOverwrite);
-             }
-             ImGui.PopFont();
-             
-             ImGui.PopStyleColor();
-             
-             FormInputs.AddVerticalSpace(20);
-             
-             // Buttons
-             var buttonWidth = 150f;
-             var spacing = ImGui.GetStyle().ItemSpacing.X;
-             var totalButtonWidth = buttonWidth * 2 + spacing;
-             ImGui.SetCursorPosX((windowWidth - totalButtonWidth) * 0.5f);
-             
-             if (ImGui.Button("Overwrite", new Vector2(buttonWidth, 40)))
-             {
-                 FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
-                 ImGui.CloseCurrentPopup();
-             }
-             
-             ImGui.SameLine();
-             
-             if (ImGui.Button("Cancel", new Vector2(buttonWidth, 40)))
-             {
-                 ImGui.CloseCurrentPopup();
-             }
-             
-             ImGui.EndPopup();
-        }
-    }
 
     private static void DrawExportingControls()
     {
@@ -404,28 +310,25 @@ internal sealed class FFMpegRenderWindow : Window
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, UiColors.BackgroundActive.Fade(0.8f).Rgba);
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, UiColors.BackgroundActive.Fade(0.6f).Rgba);
         
-        bool isAutoIncrement = (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence && FFMpegRenderSettings.AutoIncrementSubFolder) ||
-                               (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.Video && FFMpegRenderSettings.AutoIncrementVideo);
-
-        var startLabel = isAutoIncrement
-                         ? (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence ? "Render Sequence (Auto-Increment)" : "Render Video (Auto-Increment)")
-                         : "Start FFMpeg Render";
+        var startLabel = (FFMpegRenderSettings.RenderMode, FFMpegRenderSettings.IsAutoIncrementing) switch
+                         {
+                             (FFMpegRenderSettings.RenderModes.Video, true)         => FFMpegRenderUiStrings.RenderVideoAutoLabel,
+                             (FFMpegRenderSettings.RenderModes.ImageSequence, true) => FFMpegRenderUiStrings.RenderSequenceAutoLabel,
+                             _                                                      => FFMpegRenderUiStrings.StartRenderLabel
+                         };
 
         if (ImGui.Button(startLabel, new Vector2(-1, 0)))
         {
             var targetPath = RenderPaths.GetTargetFilePath(FFMpegRenderSettings.RenderMode);
             
             // If AutoIncrement is ON, we skip overwrite check because we WILL generate a new name in Process
-            bool skipCheck = isAutoIncrement;
-            
-            if (!skipCheck && RenderPaths.FileExists(targetPath, FFMpegRenderSettings.RenderMode))
+            if (FFMpegRenderSettings.IsAutoIncrementing)
             {
-                 _targetPathForOverwrite = targetPath;
-                 _showOverwriteDialog = true;
+                FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
             }
             else
             {
-                FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
+                _overwriteDialog.Show(targetPath);
             }
         }
         ImGui.PopStyleColor(3);
@@ -485,8 +388,145 @@ internal sealed class FFMpegRenderWindow : Window
     private static string _lastHelpString = string.Empty;
     private static float _lastValidFps = 60f;
     private static FFMpegRenderSettings FFMpegRenderSettings => FFMpegRenderSettings.Current;
+
+    private readonly OverwriteDialog _overwriteDialog = new();
+
+    private class OverwriteDialog
+    {
+        public void Show(string path)
+        {
+            if (RenderPaths.FileExists(path, FFMpegRenderSettings.RenderMode))
+            {
+                _targetPathForOverwrite = path;
+                _shouldOpen = true;
+            }
+            else
+            {
+                FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
+            }
+        }
+
+        public void Draw(FFMpegRenderSettings settings)
+        {
+            if (_shouldOpen)
+            {
+                ImGui.OpenPopup(PopupId);
+                _shouldOpen = false;
+            }
+
+            ImGui.SetNextWindowSize(new Vector2(600, 300));
+            if (ImGui.BeginPopupModal(PopupId, ref _isOverwriteDialogNotUsed, ImGuiWindowFlags.NoResize))
+            {
+                var windowWidth = ImGui.GetContentRegionAvail().X;
+
+                ImGui.PushFont(Fonts.FontLarge);
+                var title = "Target already exists";
+                var titleWidth = ImGui.CalcTextSize(title).X;
+                ImGui.SetCursorPosX((windowWidth - titleWidth) * 0.5f);
+                ImGui.TextUnformatted(title);
+                ImGui.PopFont();
+
+                FormInputs.AddVerticalSpace(10);
+
+                ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
+                var msg = "The target output already exists:";
+                var msgWidth = ImGui.CalcTextSize(msg).X;
+                ImGui.SetCursorPosX((windowWidth - msgWidth) * 0.5f);
+                ImGui.TextUnformatted(msg);
+
+                FormInputs.AddVerticalSpace(5);
+
+                ImGui.PushFont(Fonts.FontSmall);
+                var pathSize = ImGui.CalcTextSize(_targetPathForOverwrite);
+                if (pathSize.X < windowWidth - 40) // Allow some padding
+                {
+                    ImGui.SetCursorPosX((windowWidth - pathSize.X) * 0.5f);
+                    ImGui.TextUnformatted(_targetPathForOverwrite);
+                }
+                else
+                {
+                    ImGui.TextWrapped(_targetPathForOverwrite);
+                }
+
+                ImGui.PopFont();
+                ImGui.PopStyleColor();
+
+                FormInputs.AddVerticalSpace(20);
+
+                // Buttons
+                var buttonWidth = 150f;
+                var spacing = ImGui.GetStyle().ItemSpacing.X;
+                var totalButtonWidth = buttonWidth * 2 + spacing;
+                ImGui.SetCursorPosX((windowWidth - totalButtonWidth) * 0.5f);
+
+                if (ImGui.Button("Overwrite", new Vector2(buttonWidth, 40)))
+                {
+                    FFMpegRenderProcess.TryStart(settings);
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.SameLine();
+
+                if (ImGui.Button("Cancel", new Vector2(buttonWidth, 40)))
+                {
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.EndPopup();
+            }
+        }
+
+        private string _targetPathForOverwrite = string.Empty;
+        private bool _shouldOpen;
+        private bool _isOverwriteDialogNotUsed = true;
+        private const string PopupId = "Overwrite?";
+    }
     
-    private bool _showOverwriteDialog;
-    private bool _isOverwriteDialogNotUsed = true; // Dummy for Ref
-    private string _targetPathForOverwrite = string.Empty;
+    private static class FFMpegInstallation
+    {
+        public static bool IsInstalled() => FFMpegRenderProcess.IsFFMpegAvailable();
+
+        public static void DrawInstallUi()
+        {
+            if (FFMpegRenderProcess.State == FFMpegRenderProcess.States.Downloading)
+            {
+                ImGui.Text("Downloading FFMpeg...");
+                ImGui.ProgressBar(FFMpegRenderProcess.DownloadProgress, new Vector2(-1, 0));
+            }
+            else
+            {
+                ImGui.Text("FFMpeg is missing.");
+                ImGui.Spacing();
+                if (ImGui.Button("Download FFMpeg Suite"))
+                {
+                    FFMpegRenderProcess.InstallFFMpeg();
+                }
+
+                ImGui.TextDisabled("This will download ffmpeg.exe and ffprobe.exe using ffbinaries.");
+            }
+        }
+    }
+
+    private static class FFMpegRenderUiStrings
+    {
+        public const string BitrateLabel = "Bitrate (Mbps)";
+        public const string BitrateTooltip = "Target bitrate for video encoding in Megabits per second.";
+        public const string FolderLabel = "Folder";
+        public const string FilenameLabel = "Filename";
+        public const string DefaultFolderPlaceholder = ".\\Render\\";
+        public const string DefaultVideoPath = ".\\Render\\output.mp4";
+        public const string DefaultVideoFilename = "output.mp4";
+        public const string AutoIncrementLabel = "Auto-Increment Version";
+        public const string ExportAudioLabel = "Export Audio";
+        public const string AdvancedSettingsLabel = "Advanced Settings";
+        public const string WebpQualityLabel = "WebP Quality";
+        public const string WebpQualityTooltip = "0 is fastest/lowest, 100 is slowest/best compression in lossless mode.";
+        public const string WebpCompressionLabel = "Compression Level";
+        public const string WebpCompressionTooltip = "0 is fastest, 6 is slowest/highest compression.";
+        public const string CreateSubfolderLabel = "Create subfolder";
+        public const string AutoIncrementSubfolderLabel = "Auto-increment version";
+        public const string StartRenderLabel = "Start FFMpeg Render";
+        public const string RenderVideoAutoLabel = "Render Video (Auto-Increment)";
+        public const string RenderSequenceAutoLabel = "Render Sequence (Auto-Increment)";
+    }
 }
