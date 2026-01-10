@@ -200,7 +200,9 @@ internal static partial class RenderPaths
         var matches = _matchFileVersionPattern.Matches(filename);
         if (matches.Count == 0)
         {
-            newFilename = filename + "_v01";
+            var extension = Path.GetExtension(filename);
+            var nameWithoutExtension = Path.GetFileNameWithoutExtension(filename);
+            newFilename = nameWithoutExtension + "_v01" + extension;
         }
         else
         {
@@ -210,7 +212,9 @@ internal static partial class RenderPaths
             
             if (!int.TryParse(versionString, out var versionNumber))
             {
-                newFilename = filename + "_v01";
+                var extension = Path.GetExtension(filename);
+                var nameWithoutExtension = Path.GetFileNameWithoutExtension(filename);
+                newFilename = nameWithoutExtension + "_v01" + extension;
             }
             else
             {

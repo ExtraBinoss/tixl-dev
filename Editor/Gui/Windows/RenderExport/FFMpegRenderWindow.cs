@@ -98,10 +98,8 @@ internal sealed class FFMpegRenderWindow : Window
         else 
             DrawImageSequenceSettings();
 
-        DrawRenderingControls();
-        
-        FormInputs.AddVerticalSpace(20);
         DrawSummary();
+        DrawRenderingControls();
     }
 
     private static void DrawTimeSetup()
@@ -190,13 +188,17 @@ internal sealed class FFMpegRenderWindow : Window
 
     private void DrawVideoSettings(Int2 size)
     {
-        FormInputs.AddInt("Bitrate", ref FFMpegRenderSettings.Bitrate, 0, 500000000, 1000);
+        var bitrateMbps = FFMpegRenderSettings.Bitrate / 1_000_000f;
+        if (FormInputs.AddFloat("Bitrate (Mbps)", ref bitrateMbps, 0.1f, 500f, 0.1f, false, false, "Target bitrate for video encoding in Megabits per second."))
+        {
+            FFMpegRenderSettings.Bitrate = (int)(bitrateMbps * 1_000_000);
+        }
 
         FormInputs.AddFilePicker("File name",
                                  ref UserSettings.Config.RenderVideoFilePath!,
                                  ".\\Render\\FFMpeg-v01.mp4 ",
                                  null,
-                                 "Using v01 in the file name will enable auto incrementation.",
+                                 null,
                                  FileOperations.FilePickerTypes.Folder);
         FormInputs.AddCheckBox("Auto-Increment Version", ref FFMpegRenderSettings.AutoIncrementVideo);
 
@@ -261,7 +263,7 @@ internal sealed class FFMpegRenderWindow : Window
             var hasVersion = RenderPaths.IsFilenameIncrementable(targetToIncrement);
             if (!hasVersion)
             {
-                FormInputs.AddHint("Suffix '_v01' will be added after render");
+                // No hint needed anymore as it's expected behavior
             }
         }
     }
@@ -472,12 +474,10 @@ internal sealed class FFMpegRenderWindow : Window
         {
              // Pretty print path: replace %04d with [####]
              var prettyPath = targetPath.Replace("%04d", "[####]");
-             ImGui.TextUnformatted($"-> {prettyPath}");
+             ImGui.TextWrapped($"-> {prettyPath}");
         }
         
         ImGui.PopStyleColor();
-
-        FormInputs.AddVerticalSpace(60);
     }
 
     internal override List<Window> GetInstances() => [];

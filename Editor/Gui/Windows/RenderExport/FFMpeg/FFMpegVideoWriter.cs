@@ -154,7 +154,7 @@ internal class FFMpegVideoWriter : IDisposable
                            switch (Codec)
                            {
                                case FFMpegRenderSettings.SelectedCodec.OpenH264:
-                                   options.WithVideoCodec("libopenh264")
+                                   options.WithVideoCodec("libx264")
                                           .WithSpeedPreset(Preset)
                                           .WithVideoBitrate((int)(Bitrate / 1000))
                                           .ForcePixelFormat("yuv420p") // H.264 standard
