@@ -21,7 +21,7 @@ internal sealed class FFMpegRenderWindow : Window
     protected override void DrawContent()
     {
         FormInputs.AddVerticalSpace(15);
-        
+
         if (!IsFFMpegInstalled())
         {
             DrawInstallUi();
@@ -38,15 +38,15 @@ internal sealed class FFMpegRenderWindow : Window
         // Simple check if ffmpeg.exe is configured or accessible
         // logic to check GlobalFFOptions or PATH
         // For now, let's assume if we can find the binary or if the user clicked install.
-        return FFMpegRenderProcess.IsFFMpegAvailable(); 
+        return FFMpegRenderProcess.IsFFMpegAvailable();
     }
 
     private void DrawInstallUi()
     {
         if (FFMpegRenderProcess.State == FFMpegRenderProcess.States.Downloading)
         {
-             ImGui.Text("Downloading FFMpeg...");
-             ImGui.ProgressBar(FFMpegRenderProcess.DownloadProgress, new Vector2(-1, 0));
+            ImGui.Text("Downloading FFMpeg...");
+            ImGui.ProgressBar(FFMpegRenderProcess.DownloadProgress, new Vector2(-1, 0));
         }
         else
         {
@@ -111,32 +111,32 @@ internal sealed class FFMpegRenderWindow : Window
         // Range
         FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.TimeRange, "Render Range");
         // ApplyTimeRange replacement:
-        switch(FFMpegRenderSettings.TimeRange)
+        switch (FFMpegRenderSettings.TimeRange)
         {
-             case FFMpegRenderSettings.TimeRanges.Loop:
-                 if (Core.Animation.Playback.Current.IsLooping)
-                 {
-                     var playback = Core.Animation.Playback.Current;
-                     var startInSeconds = playback.SecondsFromBars(playback.LoopRange.Start);
-                     var endInSeconds = playback.SecondsFromBars(playback.LoopRange.End);
-                     
-                     FFMpegRenderSettings.StartInBars = (float)RenderTiming.SecondsToReferenceTime(startInSeconds, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
-                     FFMpegRenderSettings.EndInBars = (float)RenderTiming.SecondsToReferenceTime(endInSeconds, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
-                 }
-                 break;
-                 
-             case FFMpegRenderSettings.TimeRanges.Soundtrack:
+            case FFMpegRenderSettings.TimeRanges.Loop:
+                if (Core.Animation.Playback.Current.IsLooping)
+                {
+                    var playback = Core.Animation.Playback.Current;
+                    var startInSeconds = playback.SecondsFromBars(playback.LoopRange.Start);
+                    var endInSeconds = playback.SecondsFromBars(playback.LoopRange.End);
+
+                    FFMpegRenderSettings.StartInBars = (float)RenderTiming.SecondsToReferenceTime(startInSeconds, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
+                    FFMpegRenderSettings.EndInBars = (float)RenderTiming.SecondsToReferenceTime(endInSeconds, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
+                }
+                break;
+
+            case FFMpegRenderSettings.TimeRanges.Soundtrack:
                 if (PlaybackUtils.TryFindingSoundtrack(out var handle, out _))
                 {
                     var playback = Core.Animation.Playback.Current;
                     var clip = handle.Clip;
                     var startTime = (float)RenderTiming.SecondsToReferenceTime(playback.SecondsFromBars(clip.StartTime), (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
-                    var endTime = (float)RenderTiming.SecondsToReferenceTime(clip.EndTime > 0 
-                                                                                ? playback.SecondsFromBars(clip.EndTime) 
-                                                                                : clip.LengthInSeconds, 
-                                                                             (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, 
+                    var endTime = (float)RenderTiming.SecondsToReferenceTime(clip.EndTime > 0
+                                                                                ? playback.SecondsFromBars(clip.EndTime)
+                                                                                : clip.LengthInSeconds,
+                                                                             (RenderSettings.TimeReference)FFMpegRenderSettings.Reference,
                                                                              FFMpegRenderSettings.Fps);
-                    
+
                     FFMpegRenderSettings.StartInBars = startTime;
                     FFMpegRenderSettings.EndInBars = endTime;
                 }
@@ -149,41 +149,41 @@ internal sealed class FFMpegRenderWindow : Window
         var oldRef = FFMpegRenderSettings.Reference;
         if (FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.Reference, "Defined as"))
         {
-             FFMpegRenderSettings.StartInBars = (float)RenderTiming.ConvertReferenceTime(FFMpegRenderSettings.StartInBars, 
-                                                                                        (RenderSettings.TimeReference)oldRef, 
-                                                                                        (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, 
-                                                                                        FFMpegRenderSettings.Fps);
-             FFMpegRenderSettings.EndInBars = (float)RenderTiming.ConvertReferenceTime(FFMpegRenderSettings.EndInBars, 
-                                                                                        (RenderSettings.TimeReference)oldRef, 
-                                                                                        (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, 
-                                                                                        FFMpegRenderSettings.Fps);
+            FFMpegRenderSettings.StartInBars = (float)RenderTiming.ConvertReferenceTime(FFMpegRenderSettings.StartInBars,
+                                                                                       (RenderSettings.TimeReference)oldRef,
+                                                                                       (RenderSettings.TimeReference)FFMpegRenderSettings.Reference,
+                                                                                       FFMpegRenderSettings.Fps);
+            FFMpegRenderSettings.EndInBars = (float)RenderTiming.ConvertReferenceTime(FFMpegRenderSettings.EndInBars,
+                                                                                       (RenderSettings.TimeReference)oldRef,
+                                                                                       (RenderSettings.TimeReference)FFMpegRenderSettings.Reference,
+                                                                                       FFMpegRenderSettings.Fps);
         }
-        
+
         // This is getting complicated to duplicate RenderTiming. 
         // BETTER APPROACH: Make FFMpegRenderSettings inherit from RenderSettings? 
         // Or refactor RenderTiming to take an interface IRenderSettings.
         // Given the instructions "don't want to loose features", inheriting or interface is best.
         // But RenderSettings is sealed. 
-        
+
         // Let's stick to duplicated simple logic for the UI for now, or use the existing RenderSettings for the UI but mapping it to our internal settings?
         // No, that's messy.
-        
+
         // I will implement basic manual controls for now to prove FFMpeg works.
-        
+
         var changed = false;
         changed |= FormInputs.AddFloat($"Start in {FFMpegRenderSettings.Reference}", ref FFMpegRenderSettings.StartInBars);
         changed |= FormInputs.AddFloat($"End in {FFMpegRenderSettings.Reference}", ref FFMpegRenderSettings.EndInBars);
-        
+
         if (changed)
             FFMpegRenderSettings.TimeRange = FFMpegRenderSettings.TimeRanges.Custom;
-        
+
         FormInputs.AddVerticalSpace();
 
         FormInputs.AddVerticalSpace();
 
         FormInputs.AddFloat("FPS", ref FFMpegRenderSettings.Fps, 0);
         if (FFMpegRenderSettings.Fps < 0) FFMpegRenderSettings.Fps = -FFMpegRenderSettings.Fps;
-        
+
         // Handle FPS change rescaling
         if (FFMpegRenderSettings.Fps != 0 && Math.Abs(_lastValidFps - FFMpegRenderSettings.Fps) > float.Epsilon)
         {
@@ -196,7 +196,7 @@ internal sealed class FFMpegRenderWindow : Window
         var start = RenderTiming.ReferenceTimeToSeconds(FFMpegRenderSettings.StartInBars, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
         var end = RenderTiming.ReferenceTimeToSeconds(FFMpegRenderSettings.EndInBars, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
         FFMpegRenderSettings.FrameCount = (int)Math.Round((end - start) * FFMpegRenderSettings.Fps);
-        
+
 
     }
 
@@ -212,17 +212,16 @@ internal sealed class FFMpegRenderWindow : Window
                                  FileOperations.FilePickerTypes.Folder);
 
         FormInputs.AddCheckBox("Export Audio", ref FFMpegRenderSettings.ExportAudio);
-        
+
         FormInputs.AddVerticalSpace();
         FormInputs.AddCheckBox("Advanced Settings", ref FFMpegRenderSettings.ShowAdvancedSettings);
-        
+
         if (FFMpegRenderSettings.ShowAdvancedSettings)
         {
             ImGui.Indent();
             FormInputs.AddEnumDropdown(ref FFMpegRenderSettings.Codec, "Codec");
-            
-            if (FFMpegRenderSettings.Codec == FFMpegRenderSettings.SelectedCodec.H264 || 
-                FFMpegRenderSettings.Codec == FFMpegRenderSettings.SelectedCodec.H265 ||
+
+            if (FFMpegRenderSettings.Codec == FFMpegRenderSettings.SelectedCodec.OpenH264 ||
                 FFMpegRenderSettings.Codec == FFMpegRenderSettings.SelectedCodec.Vp9)
             {
                 FormInputs.AddInt("CRF Quality", ref FFMpegRenderSettings.CrfQuality, 0, 51, 1, "Lower is better quality. 0 is lossless (for H.264), 23 is default.");

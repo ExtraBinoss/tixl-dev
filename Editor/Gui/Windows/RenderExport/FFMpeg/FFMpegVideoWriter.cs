@@ -1,7 +1,5 @@
 #nullable enable
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,13 +7,8 @@ using FFMpegCore;
 using FFMpegCore.Pipes;
 using FFMpegCore.Enums; // Fix: VideoCodec, Speed
 using SharpDX.Direct3D11;
-using T3.Core.DataTypes; 
 using T3.Core.DataTypes.Vector;
-using T3.Editor.Gui.Windows.RenderExport.MF; 
-using SharpDX;
-using SharpDX.WIC; // Fix: PixelFormat
 using T3.Core.Resource;
-using T3.Core.Utils;
 
 // Fix: explicit alias to avoid ambiguity between T3.Core.DataTypes.Texture2D and SharpDX.Direct3D11.Texture2D
 using CoreTexture2D = T3.Core.DataTypes.Texture2D;
@@ -28,7 +21,7 @@ internal class FFMpegVideoWriter : IDisposable
     public int Bitrate { get; set; } = 25_000_000;
     public double Framerate { get; set; } = 60.0;
     public bool ExportAudio { get; set; }
-    public FFMpegRenderSettings.SelectedCodec Codec { get; set; } = FFMpegRenderSettings.SelectedCodec.H264;
+    public FFMpegRenderSettings.SelectedCodec Codec { get; set; } = FFMpegRenderSettings.SelectedCodec.OpenH264;
     public int Crf { get; set; } = 23;
     public Speed Preset { get; set; } = Speed.Fast;
     
@@ -62,12 +55,12 @@ internal class FFMpegVideoWriter : IDisposable
 
         // Ensure directory exists
         var dir = Path.GetDirectoryName(FilePath);
-        try 
+        try
         {
             if (dir != null && !Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             Log.Error($"Failed to create directory {dir}: {e.Message}");
             return;
@@ -120,41 +113,33 @@ internal class FFMpegVideoWriter : IDisposable
                        Console.WriteLine($"FFMpegVideoWriter: {Codec}");
                        switch (Codec)
                        {
-                           case FFMpegRenderSettings.SelectedCodec.H264:
-                                options.WithVideoCodec(VideoCodec.LibX264)
-                                       .WithVideoBitrate((int)(Bitrate / 1000))
-                                       .ForcePixelFormat("yuv420p") // H.264 standard
-                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
-                                if (Crf >= 0) options.WithConstantRateFactor(Crf);
-                                options.ForceFormat("mp4");
-                                break;
-                           case FFMpegRenderSettings.SelectedCodec.H265:
-                                options.WithVideoCodec(VideoCodec.LibX265)
-                                       .WithVideoBitrate((int)(Bitrate / 1000))
-                                       .ForcePixelFormat("yuv420p") // H.265 standard
-                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
-                                if (Crf >= 0) options.WithConstantRateFactor(Crf);
-                                options.ForceFormat("mp4");
-                                break;
+                           case FFMpegRenderSettings.SelectedCodec.OpenH264:
+                               options.WithVideoCodec("libopenh264")
+                                      .WithVideoBitrate((int)(Bitrate / 1000))
+                                      .ForcePixelFormat("yuv420p") // H.264 standard
+                                      .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
+                               if (Crf >= 0) options.WithConstantRateFactor(Crf);
+                               options.ForceFormat("mp4");
+                               break;
                            case FFMpegRenderSettings.SelectedCodec.ProRes:
-                                options.WithVideoCodec("prores_ks") 
-                                       .WithVideoBitrate((int)(Bitrate / 1000))
-                                       .ForcePixelFormat("yuv422p10le") 
-                                       .ForceFormat("mov");
-                                break;
+                               options.WithVideoCodec("prores_ks")
+                                      .WithVideoBitrate((int)(Bitrate / 1000))
+                                      .ForcePixelFormat("yuv422p10le")
+                                      .ForceFormat("mov");
+                               break;
                            case FFMpegRenderSettings.SelectedCodec.Hap:
-                                options.WithVideoCodec("hap")
-                                       .ForceFormat("mov")
-                                       .ForcePixelFormat("rgba")
-                                       .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
-                                break;
+                               options.WithVideoCodec("hap")
+                                      .ForceFormat("mov")
+                                      .ForcePixelFormat("rgba")
+                                      .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
+                               break;
                            case FFMpegRenderSettings.SelectedCodec.HapAlpha:
-                                options.WithVideoCodec("hap")
-                                       .WithCustomArgument("-format hap_alpha")
-                                       .ForceFormat("mov")
-                                       .ForcePixelFormat("rgba")
-                                       .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
-                                break;
+                               options.WithVideoCodec("hap")
+                                      .WithCustomArgument("-format hap_alpha")
+                                      .ForceFormat("mov")
+                                      .ForcePixelFormat("rgba")
+                                      .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
+                               break;
                            case FFMpegRenderSettings.SelectedCodec.Vp9:
                                 options.WithVideoCodec("libvpx-vp9")
                                        .WithVideoBitrate((int)(Bitrate / 1000))
@@ -163,18 +148,8 @@ internal class FFMpegVideoWriter : IDisposable
                                 if (Crf >= 0) options.WithConstantRateFactor(Crf);
                                 options.ForceFormat("webm");
                                 break;
-                           case FFMpegRenderSettings.SelectedCodec.Vp9Alpha:
-                                options.WithVideoCodec("libvpx-vp9")
-                                       .WithVideoBitrate((int)(Bitrate / 1000))
-                                       .ForcePixelFormat("yuva420p") // Alpha channel
-                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2") 
-                                       .WithCustomArgument("-auto-alt-ref 0"); // Fix for transparency error
-                                if (Crf >= 0) options.WithConstantRateFactor(Crf);
-                                options.ForceFormat("webm");
-                                Log.Debug($"FFMpegVideoWriter: Vp9Alpha");
-                                break;
-                       }
-                   });
+                   }}
+                   );
 
                 await processor.ProcessAsynchronously();
                 
@@ -203,7 +178,7 @@ internal class FFMpegVideoWriter : IDisposable
             // Determine audio codec based on video codec
             var audioCodec = Codec switch
             {
-                FFMpegRenderSettings.SelectedCodec.Vp9 or FFMpegRenderSettings.SelectedCodec.Vp9Alpha => "libopus",
+                FFMpegRenderSettings.SelectedCodec.Vp9 => "libopus",
                 _ => "aac"
             };
             
@@ -243,7 +218,7 @@ internal class FFMpegVideoWriter : IDisposable
         }
     }
 
-    private readonly BlockingCollection<byte[]> _frameBuffer = new(boundedCapacity: 60); 
+    private readonly BlockingCollection<byte[]> _frameBuffer = new(boundedCapacity: 60);
 
     private IEnumerable<IVideoFrame> GetFramesGenerator()
     {
@@ -268,9 +243,9 @@ internal class FFMpegVideoWriter : IDisposable
         var width = cpuAccessTexture.Description.Width;
         var height = cpuAccessTexture.Description.Height;
         var rowStride = SharpDX.WIC.PixelFormat.GetStride(SharpDX.WIC.PixelFormat.Format32bppRGBA, width);
-        
+
         var dataBox = ResourceManager.Device.ImmediateContext.MapSubresource(cpuAccessTexture, 0, 0, MapMode.Read, MapFlags.None, out var inputStream);
-        
+
         try
         {
             var frameSize = width * height * 4;
@@ -361,12 +336,12 @@ internal class FFMpegRawFrame(byte[] data, int width, int height, Action? onPipe
 
     public void Serialize(Stream pipe)
     {
-        try 
+        try
         {
             pipe.Write(_data, 0, _data.Length);
         }
-        catch (IOException ioEx) 
-        { 
+        catch (IOException ioEx)
+        {
             Log.Debug($"FFMpegVideoWriter: Pipe broken, stopping write: {ioEx.Message}");
             _onPipeBroken?.Invoke();
         }
@@ -380,14 +355,14 @@ internal class FFMpegRawFrame(byte[] data, int width, int height, Action? onPipe
     
     public async Task SerializeAsync(Stream pipe, CancellationToken token)
     {
-        try 
+        try
         {
              await pipe.WriteAsync(_data, token);
         }
-        catch (IOException ioEx) 
-        { 
-             Log.Debug($"FFMpegVideoWriter: Pipe broken (Async), stopping write: {ioEx.Message}");
-             _onPipeBroken?.Invoke();
+        catch (IOException ioEx)
+        {
+            Log.Debug($"FFMpegVideoWriter: Pipe broken (Async), stopping write: {ioEx.Message}");
+            _onPipeBroken?.Invoke();
         }
         catch (Exception ex) { Log.Error($"FFMpegVideoWriter: Stream error (Async): {ex.Message}"); }
     }
