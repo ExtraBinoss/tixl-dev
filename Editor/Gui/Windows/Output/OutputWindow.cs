@@ -414,7 +414,6 @@ internal sealed class OutputWindow : Window
         if (RenderProcess.IsExporting)
         {
             requestedResolution = RenderProcess.MainOutputRenderedSize;
-            Log.Debug($"OutputWindow: Validating export resolution. Requested: {requestedResolution}, Current Texture: {_imageCanvas.LastTexture?.Description.Width}x{_imageCanvas.LastTexture?.Description.Height}");
         }
         EvaluationContext.RequestedResolution = requestedResolution;
 
