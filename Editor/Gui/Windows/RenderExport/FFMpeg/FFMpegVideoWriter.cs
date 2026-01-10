@@ -16,6 +16,7 @@ using FFMpegCore.Arguments;
 using T3.Core.IO;
 using Microsoft.Build.Evaluation;
 using Microsoft.CodeAnalysis.Options;
+using System.Buffers;
 
 namespace T3.Editor.Gui.Windows.RenderExport.FFMpeg;
 
@@ -28,6 +29,8 @@ internal class FFMpegVideoWriter : IDisposable
     public FFMpegRenderSettings.SelectedCodec Codec { get; set; } = FFMpegRenderSettings.SelectedCodec.OpenH264;
     public int Crf { get; set; } = 23;
     public Speed Preset { get; set; } = Speed.Fast;
+    public int WebpQuality { get; set; } = 75;
+    public int WebpCompressionLevel { get; set; } = 4;
 
     private readonly int _audioSampleRate;
     private readonly int _audioChannels;
@@ -38,6 +41,8 @@ internal class FFMpegVideoWriter : IDisposable
     private readonly Int2 _videoPixelSize;
     private Task? _ffmpegTask;
     private bool _isWriting;
+    public int BufferedFrames => _frameBuffer.Count;
+    public bool IsBufferFull => _frameBuffer.Count > 30;
     private readonly Action? _onPipeBroken;
 
     // Two-pass audio: write audio to temp file, then mux after video is done
@@ -136,20 +141,20 @@ internal class FFMpegVideoWriter : IDisposable
                                    options.WithVideoCodec("libwebp")
                                           .ForcePixelFormat("bgra")
                                           .WithCustomArgument("-lossless 1")
-                                          .WithCustomArgument("-quality 100")
-                                          .WithCustomArgument("-compression_level 6");
+                                          .WithCustomArgument($"-quality {WebpQuality}")
+                                          .WithCustomArgument($"-compression_level {WebpCompressionLevel}");
                                    break;
                                // Add others if needed
                            }
                        }
                        else 
                        {
-                           options.WithSpeedPreset(Preset);
                            Console.WriteLine($"FFMpegVideoWriter: {Codec}");
                            switch (Codec)
                            {
                                case FFMpegRenderSettings.SelectedCodec.OpenH264:
                                    options.WithVideoCodec("libopenh264")
+                                          .WithSpeedPreset(Preset)
                                           .WithVideoBitrate((int)(Bitrate / 1000))
                                           .ForcePixelFormat("yuv420p") // H.264 standard
                                           .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
@@ -218,10 +223,10 @@ internal class FFMpegVideoWriter : IDisposable
                 FFMpegRenderSettings.SelectedCodec.Vp9 => "libopus",
                 _ => "aac"
             };
-            var volumeFilter = (AudioFilterOptions options) =>
+            void volumeFilter(AudioFilterOptions options)
             {
                 options.Arguments.Add(new VolumeArgument(ProjectSettings.Config.PlaybackVolume));
-            };
+            }
             var args = FFMpegArguments
                 .FromFileInput(videoFile)
                 .AddFileInput(audioFile, true, options =>
@@ -265,7 +270,9 @@ internal class FFMpegVideoWriter : IDisposable
     {
         foreach (var frame in _frameBuffer.GetConsumingEnumerable())
         {
-            yield return new FFMpegRawFrame(frame, _videoPixelSize.Width, _videoPixelSize.Height, _onPipeBroken);
+            var rawFrame = new FFMpegRawFrame(frame, _videoPixelSize.Width, _videoPixelSize.Height, _onPipeBroken);
+            yield return rawFrame;
+            ArrayPool<byte>.Shared.Return(frame);
         }
     }
 
@@ -290,12 +297,20 @@ internal class FFMpegVideoWriter : IDisposable
         try
         {
             var frameSize = width * height * 4;
-            var frameData = new byte[frameSize];
+            var frameData = ArrayPool<byte>.Shared.Rent(frameSize);
 
-            for (var y = 0; y < height; y++)
+            if (dataBox.RowPitch == rowStride)
             {
-                inputStream.Position = (long)y * dataBox.RowPitch;
-                inputStream.ReadExactly(frameData, y * rowStride, rowStride);
+                inputStream.Position = 0;
+                inputStream.ReadExactly(frameData, 0, frameSize);
+            }
+            else
+            {
+                for (var y = 0; y < height; y++)
+                {
+                    inputStream.Position = (long)y * dataBox.RowPitch;
+                    inputStream.ReadExactly(frameData, y * rowStride, rowStride);
+                }
             }
 
             if (_isWriting)
@@ -304,9 +319,14 @@ internal class FFMpegVideoWriter : IDisposable
                 {
                     _frameBuffer.Add(frameData);
                 }
+                else
+                {
+                    ArrayPool<byte>.Shared.Return(frameData);
+                }
             }
             else
             {
+                ArrayPool<byte>.Shared.Return(frameData);
                 Log.Debug("FFMpegVideoWriter: Skipping frame add after dispose.");
             }
 
@@ -370,6 +390,7 @@ internal class FFMpegVideoWriter : IDisposable
 internal class FFMpegRawFrame(byte[] data, int width, int height, Action? onPipeBroken) : IVideoFrame
 {
     private readonly byte[] _data = data;
+    private readonly int _dataSize = width * height * 4;
     public int Width { get; } = width;
     public int Height { get; } = height;
     public string Format => "bgra";
@@ -379,7 +400,7 @@ internal class FFMpegRawFrame(byte[] data, int width, int height, Action? onPipe
     {
         try
         {
-            pipe.Write(_data, 0, _data.Length);
+            pipe.Write(_data, 0, _dataSize);
         }
         catch (IOException ioEx)
         {
@@ -398,7 +419,7 @@ internal class FFMpegRawFrame(byte[] data, int width, int height, Action? onPipe
     {
         try
         {
-            await pipe.WriteAsync(_data, token);
+            await pipe.WriteAsync(_data.AsMemory(0, _dataSize), token);
         }
         catch (IOException ioEx)
         {

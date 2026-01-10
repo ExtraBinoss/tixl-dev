@@ -89,6 +89,11 @@ internal static class FFMpegRenderProcess
             return;
         }
 
+        if (IsExporting && _videoWriter != null && _videoWriter.IsBufferFull)
+        {
+            return;
+        }
+
         State = States.Exporting;
 
         // Process frame
@@ -245,6 +250,8 @@ internal static class FFMpegRenderProcess
                                Codec = renderSettings.Codec,
                                Crf = renderSettings.CrfQuality,
                                Preset = renderSettings.Preset,
+                               WebpQuality = renderSettings.WebpQuality,
+                               WebpCompressionLevel = renderSettings.WebpCompressionLevel,
                                IsImageSequence = renderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence,
                                ImageFormat = renderSettings.FileFormat
                            };

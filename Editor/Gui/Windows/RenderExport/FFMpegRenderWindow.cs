@@ -246,6 +246,11 @@ internal sealed class FFMpegRenderWindow : Window
         }
 
         FormInputs.AddEnumDropdown(ref FFMpegRenderSettings.FileFormat, "Format");
+        if (FFMpegRenderSettings.FileFormat == FFMpegRenderSettings.ImageFileFormats.WebP)
+        {
+            FormInputs.AddInt("WebP Quality", ref FFMpegRenderSettings.WebpQuality, 0, 100, 1, "0 is fastest/lowest, 100 is slowest/best compression in lossless mode.");
+            FormInputs.AddInt("Compression Level", ref FFMpegRenderSettings.WebpCompressionLevel, 0, 6, 1, "0 is fastest, 6 is slowest/highest compression.");
+        }
 
         FormInputs.AddCheckBox("Create subfolder", ref FFMpegRenderSettings.CreateSubFolder);
         FormInputs.AddCheckBox("Auto-increment version", ref FFMpegRenderSettings.AutoIncrementSubFolder);

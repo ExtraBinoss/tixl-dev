@@ -208,14 +208,15 @@ internal static partial class RenderPaths
         var directory = Path.GetDirectoryName(path);
         string newFilename;
 
-        var match = _matchFileVersionPattern.Match(filename);
-        if (!match.Success)
+        var matches = _matchFileVersionPattern.Matches(filename);
+        if (matches.Count == 0)
         {
             newFilename = filename + "_v01";
         }
         else
         {
-            var versionGroup = match.Groups[1];
+            var lastMatch = matches[^1]; // Use last version token found
+            var versionGroup = lastMatch.Groups[1];
             var versionString = versionGroup.Value;
             
             if (!int.TryParse(versionString, out var versionNumber))
@@ -225,10 +226,8 @@ internal static partial class RenderPaths
             else
             {
                 var digits = Math.Clamp(versionString.Length, 2, 4);
-                // Ensure we don't overflow logic if 9999?
                 var newVersionNumberString = (versionNumber + 1).ToString("D" + digits);
                 
-                // Replace only the version number part within the matched group
                 newFilename = filename.Remove(versionGroup.Index, versionGroup.Length)
                                       .Insert(versionGroup.Index, newVersionNumberString);
             }
@@ -238,7 +237,7 @@ internal static partial class RenderPaths
         return Path.Combine(directory, newFilename);
     }
 
-    [GeneratedRegex(@"(?:^|[\s_\-.])v(\d{2,4})(?:\b|$)")]
+    [GeneratedRegex(@"(?:^|[\s_\-.a-zA-Z])v(\d{2,4})(?:\b|$)")]
     private static partial Regex FileVersionPatternRegex();
 
     public static string GetNextVersionForFolder(string mainFolder, string subFolder)

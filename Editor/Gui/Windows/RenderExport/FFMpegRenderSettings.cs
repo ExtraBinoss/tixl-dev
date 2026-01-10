@@ -34,6 +34,8 @@ internal sealed class FFMpegRenderSettings
     public float ResolutionFactor = 1f;
 
     public int FrameCount;
+    public int WebpQuality = 75;
+    public int WebpCompressionLevel = 4;
 
     internal enum RenderModes
     {
