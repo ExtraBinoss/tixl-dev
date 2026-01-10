@@ -210,14 +210,18 @@ internal sealed class FFMpegRenderWindow : Window
 
         if (FFMpegRenderSettings.ShowAdvancedSettings)
         {
-            ImGui.Indent();
+            FormInputs.DrawFieldSetHeader("Codec Settings");
+            FormInputs.AddVerticalSpace(5);
             FormInputs.AddEnumDropdown(ref FFMpegRenderSettings.Codec, "Codec");
 
             if (FFMpegRenderSettings.Codec == FFMpegRenderSettings.SelectedCodec.OpenH264 ||
                 FFMpegRenderSettings.Codec == FFMpegRenderSettings.SelectedCodec.Vp9)
             {
+                FormInputs.AddVerticalSpace(10);
                 FormInputs.AddInt("CRF Quality", ref FFMpegRenderSettings.CrfQuality, 0, 51, 1, "Lower is better quality. 0 is lossless (for H.264), 23 is default.");
+                FormInputs.AddVerticalSpace(5);
                 FormInputs.AddEnumDropdown(ref FFMpegRenderSettings.Preset, "Preset");
+                FormInputs.AddVerticalSpace(5);
             }
             ImGui.Unindent();
         }
@@ -307,25 +311,24 @@ internal sealed class FFMpegRenderWindow : Window
         if (FFMpegRenderProcess.IsExporting)
             return;
 
-        FormInputs.DrawFieldSetHeader("Export Summary");
-        ImGui.Indent();
-        
+        ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
         var size = FFMpegRenderProcess.MainOutputRenderedSize;
-        ImGui.TextUnformatted($"Resolution: {size.Width}x{size.Height}");
-        ImGui.TextUnformatted($"Framerate: {FFMpegRenderSettings.Fps} fps");
-        ImGui.TextUnformatted($"Codec: {FFMpegRenderSettings.Codec}");
-        
-        var bitrateMbps = FFMpegRenderSettings.Bitrate / 1_000_000.0;
-        ImGui.TextUnformatted($"Target Bitrate: {bitrateMbps:F1} Mbps");
-        
-        ImGui.TextUnformatted(FFMpegRenderSettings.ExportAudio ? "Audio: Enabled" : "Audio: Disabled");
-
-        ImGui.TextUnformatted($"Total Frames: {FFMpegRenderSettings.FrameCount}");
+        var codecName = FFMpegRenderSettings.Codec.ToString().ToUpper();
+        ImGui.TextUnformatted($"{codecName} Video - {size.Width}x{size.Height} @ {FFMpegRenderSettings.Fps}fps");
         
         var duration = FFMpegRenderSettings.FrameCount / FFMpegRenderSettings.Fps;
-        ImGui.TextUnformatted($"Video Duration: {duration:F2}s");
+        ImGui.TextUnformatted($"{duration:F2}s ({FFMpegRenderSettings.FrameCount} frames)");
         
-        ImGui.Unindent();
+        if (!string.IsNullOrEmpty(UserSettings.Config.RenderVideoFilePath))
+        {
+            var basePath = RenderPaths.ResolveProjectRelativePath(UserSettings.Config.RenderVideoFilePath);
+            var correctExtension = FFMpegRenderSettings.GetFileExtension(FFMpegRenderSettings.Codec);
+            var targetFilePath = Path.ChangeExtension(basePath, correctExtension);
+            ImGui.TextUnformatted($"-> {targetFilePath}");
+        }
+        ImGui.PopStyleColor();
+
+        FormInputs.AddVerticalSpace(60);
     }
 
     internal override List<Window> GetInstances() => [];
