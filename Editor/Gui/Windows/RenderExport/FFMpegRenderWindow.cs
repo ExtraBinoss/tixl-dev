@@ -29,8 +29,9 @@ internal sealed class FFMpegRenderWindow : Window
         }
 
         DrawTimeSetup();
-        ImGui.Indent(5);
+        ImGui.Indent(1 * T3Ui.UiScaleFactor);
         DrawInnerContent();
+        ImGui.Unindent(1 * T3Ui.UiScaleFactor);
     }
 
 
@@ -293,6 +294,7 @@ internal sealed class FFMpegRenderWindow : Window
 
         ImGui.PushFont(Fonts.FontSmall);
         ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
+        ImGui.SetCursorPosX(20 * T3Ui.UiScaleFactor);
         ImGui.TextUnformatted(progressStr);
         ImGui.PopStyleColor();
         ImGui.PopFont();
@@ -335,6 +337,7 @@ internal sealed class FFMpegRenderWindow : Window
 
         if (!string.IsNullOrEmpty(FFMpegRenderProcess.LastOutputPath))
         {
+            ImGui.SetCursorPosX(1 * T3Ui.UiScaleFactor);
             if (ImGui.Button("Open Folder"))
             {
                 var folder = Path.GetDirectoryName(FFMpegRenderProcess.LastOutputPath);
@@ -366,10 +369,12 @@ internal sealed class FFMpegRenderWindow : Window
         {
              format = $"{FFMpegRenderSettings.FileFormat} Sequence";
         }
-        
+
+        ImGui.SetCursorPosX(20 * T3Ui.UiScaleFactor);
         ImGui.TextUnformatted($"{format} - {size.Width}x{size.Height} @ {FFMpegRenderSettings.Fps}fps");
         
         var duration = FFMpegRenderSettings.FrameCount / FFMpegRenderSettings.Fps;
+        ImGui.SetCursorPosX(20 * T3Ui.UiScaleFactor);
         ImGui.TextUnformatted($"{duration:F2}s ({FFMpegRenderSettings.FrameCount} frames)");
         
         var targetPath = GetCachedTargetFilePath();
@@ -377,7 +382,10 @@ internal sealed class FFMpegRenderWindow : Window
         {
              // Pretty print path: replace %04d with [####]
              var prettyPath = targetPath.Replace("%04d", "[####]");
+             ImGui.SetCursorPosX(20 * T3Ui.UiScaleFactor);
+             ImGui.PushTextWrapPos(ImGui.GetContentRegionMax().X - 20 * T3Ui.UiScaleFactor);
              ImGui.TextWrapped($"-> {prettyPath}");
+             ImGui.PopTextWrapPos();
         }
         
         ImGui.PopStyleColor();
