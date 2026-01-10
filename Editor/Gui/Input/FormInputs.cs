@@ -987,7 +987,7 @@ internal static class FormInputs
     #endregion
 
     #region internal helpers
-    private static Vector2 GetAvailableInputSize(string? tooltip, bool hasReset, bool fillWidth = false, float rightPadding = 0)
+    internal static Vector2 GetAvailableInputSize(string? tooltip, bool hasReset, bool fillWidth = false, float rightPadding = 0)
     {
         var toolWidth = 20f * T3Ui.UiScaleFactor;
         var sizeForResetToDefault = hasReset ? toolWidth : 0;
