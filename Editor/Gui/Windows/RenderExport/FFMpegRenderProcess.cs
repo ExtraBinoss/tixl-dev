@@ -24,6 +24,8 @@ internal static class FFMpegRenderProcess
 {
     public static string LastHelpString { get; private set; } = string.Empty;
     public static string LastOutputPath { get; private set; } = string.Empty;
+    public static int FrameIndex => _frameIndex;
+    public static int FrameCount => _frameCount;
     public static double Progress => _frameCount <= 1 ? 0.0 : (_frameIndex / (double)(_frameCount - 1));
     
     public static Type? MainOutputType { get; private set; }

@@ -9,6 +9,7 @@ using FFMpegCore;
 using System.IO;
 using T3.Editor.Gui.Interaction.Timing;
 using T3.Core.SystemUi;
+using T3.Core.Animation;
 
 namespace T3.Editor.Gui.Windows.RenderExport;
 
@@ -88,21 +89,10 @@ internal sealed class FFMpegRenderWindow : Window
 
         _lastHelpString = "Ready to render";
 
-        FormInputs.AddVerticalSpace();
-        // Only Video supported for now in this window
-        // FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.RenderMode, "Render Mode");
-
-        FormInputs.AddVerticalSpace();
-
         DrawVideoSettings(FFMpegRenderProcess.MainOutputOriginalSize);
-
-        FormInputs.AddVerticalSpace(5);
-        ImGui.Separator();
-        FormInputs.AddVerticalSpace(5);
-
         DrawRenderingControls();
         
-        FormInputs.AddVerticalSpace(10);
+        FormInputs.AddVerticalSpace(20);
         DrawSummary();
     }
 
@@ -235,46 +225,81 @@ internal sealed class FFMpegRenderWindow : Window
 
     private static void DrawRenderingControls()
     {
-        if (!FFMpegRenderProcess.IsExporting)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Button, UiColors.BackgroundActive.Rgba);
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, UiColors.BackgroundActive.Fade(0.8f).Rgba);
-            ImGui.PushStyleColor(ImGuiCol.ButtonActive, UiColors.BackgroundActive.Fade(0.6f).Rgba);
-            
-            if (ImGui.Button("Start FFMpeg Render", new Vector2(-1, 0)))
-            {
-                FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
-            }
-            ImGui.PopStyleColor(3);
+        FormInputs.AddVerticalSpace(5);
+        ImGui.Separator();
+        FormInputs.AddVerticalSpace(5);
 
-            if (!string.IsNullOrEmpty(FFMpegRenderProcess.LastOutputPath))
-            {
-                if (ImGui.Button("Open Folder"))
-                {
-                    var folder = Path.GetDirectoryName(FFMpegRenderProcess.LastOutputPath);
-                    if (folder != null && Directory.Exists(folder))
-                    {
-                        CoreUi.Instance.OpenWithDefaultApplication(folder);
-                    }
-                }
-                ImGui.TextDisabled(Path.GetFileName(FFMpegRenderProcess.LastOutputPath));
-                CustomComponents.TooltipForLastItem($"Open folder and select {Path.GetFileName(FFMpegRenderProcess.LastOutputPath)}");
-            }
+        if (FFMpegRenderProcess.IsExporting)
+        {
+            DrawExportingControls();
         }
         else
         {
-            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, UiColors.BackgroundActive.Rgba);
-            ImGui.PushStyleColor(ImGuiCol.FrameBg, UiColors.BackgroundActive.Fade(0.1f).Rgba);
-            ImGui.ProgressBar((float)FFMpegRenderProcess.Progress, new Vector2(-1, 24 * T3Ui.UiScaleFactor));
-            ImGui.PopStyleColor(2);
-
-            if (ImGui.Button("Cancel"))
-            {
-                FFMpegRenderProcess.Cancel("Cancelled manually");
-            }
+            DrawIdleControls();
         }
-        
+
         CustomComponents.HelpText(FFMpegRenderProcess.IsExporting ? FFMpegRenderProcess.LastHelpString : _lastHelpString);
+    }
+
+    private static void DrawExportingControls()
+    {
+        var progress = (float)FFMpegRenderProcess.Progress;
+        var elapsed = Playback.RunTimeInSecs - FFMpegRenderProcess.ExportStartedTimeLocal;
+
+        var timeRemainingStr = "Calculating...";
+        if (progress > 0.01)
+        {
+            var estimatedTotal = elapsed / progress;
+            var remaining = estimatedTotal - elapsed;
+            timeRemainingStr = StringUtils.HumanReadableDurationFromSeconds(remaining) + " remaining";
+        }
+
+        var progressStr = $"{timeRemainingStr} ({FFMpegRenderProcess.FrameIndex}/{FFMpegRenderProcess.FrameCount})";
+
+        ImGui.PushStyleColor(ImGuiCol.PlotHistogram, UiColors.StatusAutomated.Rgba);
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, UiColors.BackgroundInputField.Rgba);
+        ImGui.ProgressBar(progress, new Vector2(-1, 4 * T3Ui.UiScaleFactor), "");
+        ImGui.PopStyleColor(2);
+
+        ImGui.PushFont(Fonts.FontSmall);
+        ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
+        ImGui.TextUnformatted(progressStr);
+        ImGui.PopStyleColor();
+        ImGui.PopFont();
+
+        FormInputs.AddVerticalSpace(5);
+        if (ImGui.Button("Cancel Render", new Vector2(-1, 24 * T3Ui.UiScaleFactor)))
+        {
+            FFMpegRenderProcess.Cancel("Cancelled manually");
+        }
+    }
+
+    private static void DrawIdleControls()
+    {
+        ImGui.PushStyleColor(ImGuiCol.Button, UiColors.BackgroundActive.Rgba);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, UiColors.BackgroundActive.Fade(0.8f).Rgba);
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, UiColors.BackgroundActive.Fade(0.6f).Rgba);
+
+        if (ImGui.Button("Start FFMpeg Render", new Vector2(-1, 0)))
+        {
+            FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
+        }
+        ImGui.PopStyleColor(3);
+
+        if (!string.IsNullOrEmpty(FFMpegRenderProcess.LastOutputPath))
+        {
+            if (ImGui.Button("Open Folder"))
+            {
+                var folder = Path.GetDirectoryName(FFMpegRenderProcess.LastOutputPath);
+                if (folder != null && Directory.Exists(folder))
+                {
+                    CoreUi.Instance.OpenWithDefaultApplication(folder);
+                }
+            }
+            ImGui.SameLine();
+            ImGui.TextDisabled(Path.GetFileName(FFMpegRenderProcess.LastOutputPath));
+            CustomComponents.TooltipForLastItem($"Open folder and select {Path.GetFileName(FFMpegRenderProcess.LastOutputPath)}");
+        }
     }
 
     private void DrawSummary()
@@ -293,10 +318,7 @@ internal sealed class FFMpegRenderWindow : Window
         var bitrateMbps = FFMpegRenderSettings.Bitrate / 1_000_000.0;
         ImGui.TextUnformatted($"Target Bitrate: {bitrateMbps:F1} Mbps");
         
-        if (FFMpegRenderSettings.ExportAudio)
-            ImGui.TextUnformatted("Audio: Enabled");
-        else
-            ImGui.TextUnformatted("Audio: Disabled");
+        ImGui.TextUnformatted(FFMpegRenderSettings.ExportAudio ? "Audio: Enabled" : "Audio: Disabled");
 
         ImGui.TextUnformatted($"Total Frames: {FFMpegRenderSettings.FrameCount}");
         
