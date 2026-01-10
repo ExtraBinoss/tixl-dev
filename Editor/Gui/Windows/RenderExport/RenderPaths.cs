@@ -82,18 +82,7 @@ internal static partial class RenderPaths
                 var nextFolderPath = GetNextVersionForFolder(folder, subFolder);
                 subFolder = Path.GetFileName(nextFolderPath);
             }
-            else
-            {
-               // Prefix increment logic
-               var targetToIncrement = prefix;
-               if (!IsFilenameIncrementable(targetToIncrement) || FileExists(Path.Combine(folder, prefix), mode))
-               {
-                   var testPath = Path.Combine(folder, prefix);
-                   if (IsFilenameIncrementable(prefix))
-                   {
-                   }
-               }
-            }
+
         }
 
         var baseFolder = ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath ?? string.Empty);
@@ -237,38 +226,49 @@ internal static partial class RenderPaths
         return Path.Combine(directory, newFilename);
     }
 
-    [GeneratedRegex(@"(?:^|[\s_\-.a-zA-Z])v(\d{2,4})(?:\b|$)")]
+    [GeneratedRegex(@"(?<=^|[\s_\-.a-zA-Z])v(\d{2,4})(?=\b|$)")]
     private static partial Regex FileVersionPatternRegex();
 
     public static string GetNextVersionForFolder(string mainFolder, string subFolder)
     {
-        var result = _matchFileVersionPattern.Match(subFolder);
-        if (!result.Success)
+        var match = _matchFileVersionPattern.Match(subFolder);
+        
+        if (!match.Success)
         {
+            // No version found, append _v01
             var newSub = subFolder + "_v01";
             var path = Path.Combine(mainFolder, newSub);
-            if (Directory.Exists(path))
-            {
-                return GetNextVersionForFolder(mainFolder, newSub);
-            }
-            return path;
+            return Directory.Exists(path) 
+                ? GetNextVersionForFolder(mainFolder, newSub) 
+                : path;
         }
 
-        var versionString = result.Groups[1].Value;
+        var versionGroup = match.Groups[1];
+        var versionString = versionGroup.Value;
+        
         if (!int.TryParse(versionString, out var versionNumber))
             return Path.Combine(mainFolder, subFolder);
 
         var digits = Math.Clamp(versionString.Length, 2, 4);
         
+        // Find the next free version by incrementing
         for (int i = 0; i < 1000; i++)
         {
-             var fullPath = Path.Combine(mainFolder, subFolder);
-             if (!Directory.Exists(fullPath))
-                 return fullPath;
+            var fullPath = Path.Combine(mainFolder, subFolder);
+            if (!Directory.Exists(fullPath))
+                return fullPath;
 
-             versionNumber++;
-             var newVersionString = "v" + versionNumber.ToString("D" + digits);
-             subFolder = _matchFileVersionPattern.Replace(subFolder, newVersionString, 1);
+            versionNumber++;
+            var newVersionNumberString = versionNumber.ToString("D" + digits);
+            
+            // Safe replacement: only replace the digits, not the 'v' or any prefix
+            subFolder = subFolder.Remove(versionGroup.Index, versionGroup.Length)
+                                 .Insert(versionGroup.Index, newVersionNumberString);
+            
+            // Re-match for the next iteration since indices may have shifted
+            match = _matchFileVersionPattern.Match(subFolder);
+            if (match.Success)
+                versionGroup = match.Groups[1];
         }
         
         return Path.Combine(mainFolder, subFolder);
