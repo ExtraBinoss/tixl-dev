@@ -30,7 +30,7 @@ internal class FFMpegVideoWriter : IDisposable
     public int Crf { get; set; } = 23;
     public Speed Preset { get; set; } = Speed.Fast;
     public int WebpQuality { get; set; } = 75;
-    public int WebpCompressionLevel { get; set; } = 4;
+    public int WebpCompressionLevel { get; set; } = 0;
 
     private readonly int _audioSampleRate;
     private readonly int _audioChannels;
@@ -41,8 +41,9 @@ internal class FFMpegVideoWriter : IDisposable
     private readonly Int2 _videoPixelSize;
     private Task? _ffmpegTask;
     private bool _isWriting;
-    public int BufferedFrames => _frameBuffer.Count;
-    public bool IsBufferFull => _frameBuffer.Count > 30;
+    private bool _isDisposed;
+    public int BufferedFrames => _isDisposed ? 0 : _frameBuffer.Count;
+    public bool IsBufferFull => !_isDisposed && _frameBuffer.Count > 30;
     private readonly Action? _onPipeBroken;
 
     // Two-pass audio: write audio to temp file, then mux after video is done
@@ -268,8 +269,22 @@ internal class FFMpegVideoWriter : IDisposable
 
     private IEnumerable<IVideoFrame> GetFramesGenerator()
     {
-        foreach (var frame in _frameBuffer.GetConsumingEnumerable())
+        while (!_isDisposed)
         {
+            byte[]? frame;
+            try
+            {
+                if (!_frameBuffer.TryTake(out frame, 100))
+                {
+                    if (_frameBuffer.IsAddingCompleted)
+                        break;
+                    continue;
+                }
+            }
+            catch (ObjectDisposedException) { break; }
+
+            if (frame == null) continue;
+
             var rawFrame = new FFMpegRawFrame(frame, _videoPixelSize.Width, _videoPixelSize.Height, _onPipeBroken);
             yield return rawFrame;
             ArrayPool<byte>.Shared.Return(frame);
@@ -313,13 +328,20 @@ internal class FFMpegVideoWriter : IDisposable
                 }
             }
 
-            if (_isWriting)
+            if (_isWriting && !_isDisposed)
             {
-                if (!_frameBuffer.IsAddingCompleted)
+                try 
                 {
-                    _frameBuffer.Add(frameData);
+                    if (!_frameBuffer.IsAddingCompleted)
+                    {
+                        _frameBuffer.Add(frameData);
+                    }
+                    else
+                    {
+                        ArrayPool<byte>.Shared.Return(frameData);
+                    }
                 }
-                else
+                catch (ObjectDisposedException)
                 {
                     ArrayPool<byte>.Shared.Return(frameData);
                 }
@@ -363,6 +385,8 @@ internal class FFMpegVideoWriter : IDisposable
 
     public void Dispose()
     {
+        if (_isDisposed) return;
+        
         _isWriting = false;
         _frameBuffer.CompleteAdding();
 
@@ -376,13 +400,15 @@ internal class FFMpegVideoWriter : IDisposable
 
         try
         {
-            // Wait longer for muxing to complete
-            _ffmpegTask?.Wait(ExportAudio ? 30000 : 5000);
+            // Give it much more time to flush buffered frames (especially for slow libwebp)
+            _ffmpegTask?.Wait(60000); 
         }
         catch (Exception e)
         {
             Log.Debug($"FFMpeg join error: {e.Message}");
         }
+        
+        _isDisposed = true;
         _frameBuffer.Dispose();
     }
 }
