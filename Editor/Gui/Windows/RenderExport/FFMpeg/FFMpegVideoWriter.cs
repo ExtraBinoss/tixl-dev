@@ -1,7 +1,5 @@
 #nullable enable
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,13 +7,8 @@ using FFMpegCore;
 using FFMpegCore.Pipes;
 using FFMpegCore.Enums; // Fix: VideoCodec, Speed
 using SharpDX.Direct3D11;
-using T3.Core.DataTypes;
 using T3.Core.DataTypes.Vector;
-using T3.Editor.Gui.Windows.RenderExport.MF;
-using SharpDX;
-using SharpDX.WIC; // Fix: PixelFormat
 using T3.Core.Resource;
-using T3.Core.Utils;
 
 // Fix: explicit alias to avoid ambiguity between T3.Core.DataTypes.Texture2D and SharpDX.Direct3D11.Texture2D
 using CoreTexture2D = T3.Core.DataTypes.Texture2D;
