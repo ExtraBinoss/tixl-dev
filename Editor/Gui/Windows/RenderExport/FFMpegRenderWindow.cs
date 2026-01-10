@@ -89,7 +89,15 @@ internal sealed class FFMpegRenderWindow : Window
 
         _lastHelpString = "Ready to render";
 
-        DrawVideoSettings(FFMpegRenderProcess.MainOutputOriginalSize);
+        FormInputs.SetIndentToParameters();
+        FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.RenderMode, "Output");
+        FormInputs.AddVerticalSpace();
+
+        if (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.Video)
+            DrawVideoSettings(FFMpegRenderProcess.MainOutputOriginalSize);
+        else 
+            DrawImageSequenceSettings();
+
         DrawRenderingControls();
         
         FormInputs.AddVerticalSpace(20);
@@ -101,7 +109,8 @@ internal sealed class FFMpegRenderWindow : Window
         FormInputs.SetIndentToParameters();
 
         // Range
-        FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.TimeRange, "Render Range");
+        FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.TimeRange, "Range");
+
         // ApplyTimeRange replacement:
         switch (FFMpegRenderSettings.TimeRange)
         {
@@ -139,7 +148,7 @@ internal sealed class FFMpegRenderWindow : Window
 
         // Reference switch converts values
         var oldRef = FFMpegRenderSettings.Reference;
-        if (FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.Reference, "Defined as"))
+        if (FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.Reference, "Scale"))
         {
             FFMpegRenderSettings.StartInBars = (float)RenderTiming.ConvertReferenceTime(FFMpegRenderSettings.StartInBars,
                                                                                        (RenderSettings.TimeReference)oldRef,
@@ -151,20 +160,9 @@ internal sealed class FFMpegRenderWindow : Window
                                                                                        FFMpegRenderSettings.Fps);
         }
 
-        // This is getting complicated to duplicate RenderTiming. 
-        // BETTER APPROACH: Make FFMpegRenderSettings inherit from RenderSettings? 
-        // Or refactor RenderTiming to take an interface IRenderSettings.
-        // Given the instructions "don't want to loose features", inheriting or interface is best.
-        // But RenderSettings is sealed. 
-
-        // Let's stick to duplicated simple logic for the UI for now, or use the existing RenderSettings for the UI but mapping it to our internal settings?
-        // No, that's messy.
-
-        // I will implement basic manual controls for now to prove FFMpeg works.
-
         var changed = false;
-        changed |= FormInputs.AddFloat($"Start in {FFMpegRenderSettings.Reference}", ref FFMpegRenderSettings.StartInBars);
-        changed |= FormInputs.AddFloat($"End in {FFMpegRenderSettings.Reference}", ref FFMpegRenderSettings.EndInBars);
+        changed |= FormInputs.AddFloat($"Start ({FFMpegRenderSettings.Reference})", ref FFMpegRenderSettings.StartInBars);
+        changed |= FormInputs.AddFloat($"End ({FFMpegRenderSettings.Reference})", ref FFMpegRenderSettings.EndInBars);
 
         if (changed)
             FFMpegRenderSettings.TimeRange = FFMpegRenderSettings.TimeRanges.Custom;
@@ -188,8 +186,6 @@ internal sealed class FFMpegRenderWindow : Window
         var start = RenderTiming.ReferenceTimeToSeconds(FFMpegRenderSettings.StartInBars, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
         var end = RenderTiming.ReferenceTimeToSeconds(FFMpegRenderSettings.EndInBars, (RenderSettings.TimeReference)FFMpegRenderSettings.Reference, FFMpegRenderSettings.Fps);
         FFMpegRenderSettings.FrameCount = (int)Math.Round((end - start) * FFMpegRenderSettings.Fps);
-
-
     }
 
     private void DrawVideoSettings(Int2 size)
@@ -226,8 +222,51 @@ internal sealed class FFMpegRenderWindow : Window
             ImGui.Unindent();
         }
     }
+    
+    private void DrawImageSequenceSettings()
+    {
+        FormInputs.AddFilePicker("Main Folder",
+                                 ref UserSettings.Config.RenderSequenceFilePath!, 
+                                 ".\\ImageSequence ", 
+                                 null, 
+                                 "Folder to save the sequence", 
+                                 FileOperations.FilePickerTypes.Folder);
 
-    private static void DrawRenderingControls()
+        if (FormInputs.AddStringInput("Subfolder", ref UserSettings.Config.RenderSequenceFileName))
+        {
+            UserSettings.Config.RenderSequenceFileName = (UserSettings.Config.RenderSequenceFileName ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(UserSettings.Config.RenderSequenceFileName)) UserSettings.Config.RenderSequenceFileName = "v01";
+        }
+
+        if (FormInputs.AddStringInput("Filename Prefix", ref UserSettings.Config.RenderSequencePrefix))
+        {
+            UserSettings.Config.RenderSequencePrefix = (UserSettings.Config.RenderSequencePrefix ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(UserSettings.Config.RenderSequencePrefix)) UserSettings.Config.RenderSequencePrefix = "img";
+        }
+
+        FormInputs.AddEnumDropdown(ref FFMpegRenderSettings.FileFormat, "Format");
+
+        FormInputs.AddCheckBox("Create subfolder", ref FFMpegRenderSettings.CreateSubFolder);
+        FormInputs.AddCheckBox("Auto-increment version", ref FFMpegRenderSettings.AutoIncrementSubFolder);
+        
+        if (FFMpegRenderSettings.AutoIncrementSubFolder)
+        {
+            var targetToIncrement = FFMpegRenderSettings.CreateSubFolder ? UserSettings.Config.RenderSequenceFileName : UserSettings.Config.RenderSequencePrefix;
+            var hasVersion = RenderPaths.IsFilenameIncrementable(targetToIncrement);
+            if (!hasVersion)
+            {
+                FormInputs.AddHint("Suffix '_v01' will be added after render");
+            }
+        }
+    }
+    
+    // Helper to resolve target path for UI
+    private string GetCachedTargetFilePath()
+    {
+         return RenderPaths.GetExpectedTargetDisplayPath(FFMpegRenderSettings.RenderMode);
+    }
+
+    private void DrawRenderingControls()
     {
         FormInputs.AddVerticalSpace(5);
         ImGui.Separator();
@@ -243,6 +282,47 @@ internal sealed class FFMpegRenderWindow : Window
         }
 
         CustomComponents.HelpText(FFMpegRenderProcess.IsExporting ? FFMpegRenderProcess.LastHelpString : _lastHelpString);
+        
+        // Draw Overwrite Dialog
+        if (_showOverwriteDialog)
+        {
+            ImGui.OpenPopup("Overwrite?");
+            _showOverwriteDialog = false;
+        }
+
+        DrawOverwriteDialog();
+    }
+    
+    private void DrawOverwriteDialog()
+    {
+        ImGui.SetNextWindowSize(new Vector2(600, 200));
+        if (ImGui.BeginPopupModal("Overwrite?", ref _isOverwriteDialogNotUsed, ImGuiWindowFlags.NoResize))
+        {
+             ImGui.PushFont(Fonts.FontLarge);
+             ImGui.TextUnformatted("Target already exists");
+             ImGui.PopFont();
+             
+             FormInputs.AddVerticalSpace(10);
+             ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
+             ImGui.TextWrapped($"The target output already exists:\n{_targetPathForOverwrite}");
+             ImGui.PopStyleColor();
+             FormInputs.AddVerticalSpace(20);
+             
+             if (ImGui.Button("Overwrite", new Vector2(150, 40)))
+             {
+                 FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
+                 ImGui.CloseCurrentPopup();
+             }
+             
+             ImGui.SameLine();
+             
+             if (ImGui.Button("Cancel", new Vector2(150, 40)))
+             {
+                 ImGui.CloseCurrentPopup();
+             }
+             
+             ImGui.EndPopup();
+        }
     }
 
     private static void DrawExportingControls()
@@ -278,15 +358,32 @@ internal sealed class FFMpegRenderWindow : Window
         }
     }
 
-    private static void DrawIdleControls()
+    private void DrawIdleControls()
     {
         ImGui.PushStyleColor(ImGuiCol.Button, UiColors.BackgroundActive.Rgba);
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, UiColors.BackgroundActive.Fade(0.8f).Rgba);
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, UiColors.BackgroundActive.Fade(0.6f).Rgba);
+        
+        var startLabel = FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence && FFMpegRenderSettings.AutoIncrementSubFolder
+                         ? "Render Sequence (Auto-Increment)"
+                         : "Start FFMpeg Render";
 
-        if (ImGui.Button("Start FFMpeg Render", new Vector2(-1, 0)))
+        if (ImGui.Button(startLabel, new Vector2(-1, 0)))
         {
-            FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
+            var targetPath = RenderPaths.GetTargetFilePath(FFMpegRenderSettings.RenderMode);
+            
+            // If AutoIncrement is ON for Sequence, we skip overwrite check because we WILL generate a new name in Process
+            bool skipCheck = FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence && FFMpegRenderSettings.AutoIncrementSubFolder;
+            
+            if (!skipCheck && RenderPaths.FileExists(targetPath, FFMpegRenderSettings.RenderMode))
+            {
+                 _targetPathForOverwrite = targetPath;
+                 _showOverwriteDialog = true;
+            }
+            else
+            {
+                FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
+            }
         }
         ImGui.PopStyleColor(3);
 
@@ -313,19 +410,30 @@ internal sealed class FFMpegRenderWindow : Window
 
         ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
         var size = FFMpegRenderProcess.MainOutputRenderedSize;
-        var codecName = FFMpegRenderSettings.Codec.ToString().ToUpper();
-        ImGui.TextUnformatted($"{codecName} Video - {size.Width}x{size.Height} @ {FFMpegRenderSettings.Fps}fps");
+        
+        string format;
+        if (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.Video)
+        {
+             format = $"{FFMpegRenderSettings.Codec.ToString().ToUpper()} Video";
+        }
+        else
+        {
+             format = $"{FFMpegRenderSettings.FileFormat} Sequence";
+        }
+        
+        ImGui.TextUnformatted($"{format} - {size.Width}x{size.Height} @ {FFMpegRenderSettings.Fps}fps");
         
         var duration = FFMpegRenderSettings.FrameCount / FFMpegRenderSettings.Fps;
         ImGui.TextUnformatted($"{duration:F2}s ({FFMpegRenderSettings.FrameCount} frames)");
         
-        if (!string.IsNullOrEmpty(UserSettings.Config.RenderVideoFilePath))
+        var targetPath = GetCachedTargetFilePath();
+        if (!string.IsNullOrEmpty(targetPath))
         {
-            var basePath = RenderPaths.ResolveProjectRelativePath(UserSettings.Config.RenderVideoFilePath);
-            var correctExtension = FFMpegRenderSettings.GetFileExtension(FFMpegRenderSettings.Codec);
-            var targetFilePath = Path.ChangeExtension(basePath, correctExtension);
-            ImGui.TextUnformatted($"-> {targetFilePath}");
+             // Pretty print path: replace %04d with [####]
+             var prettyPath = targetPath.Replace("%04d", "[####]");
+             ImGui.TextUnformatted($"-> {prettyPath}");
         }
+        
         ImGui.PopStyleColor();
 
         FormInputs.AddVerticalSpace(60);
@@ -336,4 +444,8 @@ internal sealed class FFMpegRenderWindow : Window
     private static string _lastHelpString = string.Empty;
     private static float _lastValidFps = 60f;
     private static FFMpegRenderSettings FFMpegRenderSettings => FFMpegRenderSettings.Current;
+    
+    private bool _showOverwriteDialog;
+    private bool _isOverwriteDialogNotUsed = true; // Dummy for Ref
+    private string _targetPathForOverwrite = string.Empty;
 }

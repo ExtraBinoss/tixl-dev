@@ -24,11 +24,10 @@ internal sealed class FFMpegRenderSettings
     public RenderModes RenderMode = RenderModes.Video;
     public int Bitrate = 25_000_000;
     public bool ExportAudio = true;
-    // public  ScreenshotWriter.FileFormats FileFormat; // Image sequence not primary focus for FFMpeg yet? Or maybe it is?
-    // Let's keep it to support image sequences via FFMpeg if we want, but for now maybe just Video is enough? 
-    // The user wants side by side, so maybe keep features parity. FFMpeg can do image sequences too.
-    // But for now let's keep it simple and focus on Video as per request for "ffmpeg thing". 
-    // Actually, let's keep the structure similar.
+    
+    public ImageFileFormats FileFormat = ImageFileFormats.Png;
+    public bool CreateSubFolder = true;
+    public bool AutoIncrementSubFolder = true;
 
     public TimeRanges TimeRange = TimeRanges.Custom;
     public float ResolutionFactor = 1f;
@@ -38,6 +37,14 @@ internal sealed class FFMpegRenderSettings
     internal enum RenderModes
     {
         Video,
+        ImageSequence,
+    }
+    
+    public enum ImageFileFormats
+    {
+        Png,
+        Jpg,
+        // Tiff, // FFMpeg supports it, but keep strict list for now
     }
 
     public bool ShowAdvancedSettings;

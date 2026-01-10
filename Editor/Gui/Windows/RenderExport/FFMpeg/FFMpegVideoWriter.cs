@@ -28,6 +28,9 @@ internal class FFMpegVideoWriter : IDisposable
     private readonly int _audioSampleRate;
     private readonly int _audioChannels;
 
+    public bool IsImageSequence { get; set; }
+    public FFMpegRenderSettings.ImageFileFormats ImageFormat { get; set; }
+
     private readonly Int2 _videoPixelSize;
     private Task? _ffmpegTask;
     private bool _isWriting;
@@ -52,6 +55,8 @@ internal class FFMpegVideoWriter : IDisposable
     {
         if (_isWriting) return;
         _isWriting = true;
+
+        if (IsImageSequence) ExportAudio = false;
 
         // Ensure directory exists
         var dir = Path.GetDirectoryName(FilePath);
@@ -110,45 +115,66 @@ internal class FFMpegVideoWriter : IDisposable
                        options.WithCustomArgument("-an"); // Explicitly no audio
                        
                        // Codec specific options
-                       Console.WriteLine($"FFMpegVideoWriter: {Codec}");
-                       switch (Codec)
+                       if (IsImageSequence)
                        {
-                           case FFMpegRenderSettings.SelectedCodec.OpenH264:
-                               options.WithVideoCodec("libopenh264")
-                                      .WithVideoBitrate((int)(Bitrate / 1000))
-                                      .ForcePixelFormat("yuv420p") // H.264 standard
-                                      .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
-                               if (Crf >= 0) options.WithConstantRateFactor(Crf);
-                               options.ForceFormat("mp4");
-                               break;
-                           case FFMpegRenderSettings.SelectedCodec.ProRes:
-                               options.WithVideoCodec("prores_ks")
-                                      .WithVideoBitrate((int)(Bitrate / 1000))
-                                      .ForcePixelFormat("yuv422p10le")
-                                      .ForceFormat("mov");
-                               break;
-                           case FFMpegRenderSettings.SelectedCodec.Hap:
-                               options.WithVideoCodec("hap")
-                                      .ForceFormat("mov")
-                                      .ForcePixelFormat("rgba")
-                                      .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
-                               break;
-                           case FFMpegRenderSettings.SelectedCodec.HapAlpha:
-                               options.WithVideoCodec("hap")
-                                      .WithCustomArgument("-format hap_alpha")
-                                      .ForceFormat("mov")
-                                      .ForcePixelFormat("rgba")
-                                      .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
-                               break;
-                           case FFMpegRenderSettings.SelectedCodec.Vp9:
-                                options.WithVideoCodec("libvpx-vp9")
-                                       .WithVideoBitrate((int)(Bitrate / 1000))
-                                       .ForcePixelFormat("yuv420p")
-                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
-                                if (Crf >= 0) options.WithConstantRateFactor(Crf);
-                                options.ForceFormat("webm");
-                                break;
-                   }}
+                           options.ForceFormat("image2");
+
+                           switch (ImageFormat)
+                           {
+                               case FFMpegRenderSettings.ImageFileFormats.Png:
+                                   options.WithVideoCodec("png")
+                                          .WithCustomArgument("-compression_level 9"); // Max compression for PNG
+                                   break;
+                               case FFMpegRenderSettings.ImageFileFormats.Jpg:
+                                   options.WithVideoCodec("mjpeg")
+                                          .WithCustomArgument("-q:v 2"); // High quality JPEG
+                                   break;
+                               // Add others if needed
+                           }
+                       }
+                       else 
+                       {
+                           Console.WriteLine($"FFMpegVideoWriter: {Codec}");
+                           switch (Codec)
+                           {
+                               case FFMpegRenderSettings.SelectedCodec.OpenH264:
+                                   options.WithVideoCodec("libopenh264")
+                                          .WithVideoBitrate((int)(Bitrate / 1000))
+                                          .ForcePixelFormat("yuv420p") // H.264 standard
+                                          .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
+                                   if (Crf >= 0) options.WithConstantRateFactor(Crf);
+                                   options.ForceFormat("mp4");
+                                   break;
+                               case FFMpegRenderSettings.SelectedCodec.ProRes:
+                                   options.WithVideoCodec("prores_ks")
+                                          .WithVideoBitrate((int)(Bitrate / 1000))
+                                          .ForcePixelFormat("yuv422p10le")
+                                          .ForceFormat("mov");
+                                   break;
+                               case FFMpegRenderSettings.SelectedCodec.Hap:
+                                   options.WithVideoCodec("hap")
+                                          .ForceFormat("mov")
+                                          .ForcePixelFormat("rgba")
+                                          .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
+                                   break;
+                               case FFMpegRenderSettings.SelectedCodec.HapAlpha:
+                                   options.WithVideoCodec("hap")
+                                          .WithCustomArgument("-format hap_alpha")
+                                          .ForceFormat("mov")
+                                          .ForcePixelFormat("rgba")
+                                          .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
+                                   break;
+                               case FFMpegRenderSettings.SelectedCodec.Vp9:
+                                    options.WithVideoCodec("libvpx-vp9")
+                                           .WithVideoBitrate((int)(Bitrate / 1000))
+                                           .ForcePixelFormat("yuv420p")
+                                           .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
+                                    if (Crf >= 0) options.WithConstantRateFactor(Crf);
+                                    options.ForceFormat("webm");
+                                    break;
+                           }
+                       }
+                   }
                    );
 
                 await processor.ProcessAsynchronously();

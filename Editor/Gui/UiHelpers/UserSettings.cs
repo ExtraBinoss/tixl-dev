@@ -145,6 +145,7 @@ public sealed class UserSettings : Settings<UserSettings.ConfigData>
         public string RenderVideoFilePath = "./Render/render-v01.mp4";
         public string RenderSequenceFilePath = "./ImageSequence/";
         public string RenderSequenceFileName = "Output_";
+        public string RenderSequencePrefix = "img_";
 
         // Profiling and debugging
         public bool EnableFrameProfiling = true;

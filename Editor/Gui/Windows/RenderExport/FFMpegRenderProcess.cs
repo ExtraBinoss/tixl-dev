@@ -140,11 +140,56 @@ internal static class FFMpegRenderProcess
             Log.Warning("Export is already in progress");
             return;
         }
+
+        var targetFilePath = RenderPaths.GetTargetFilePath(renderSettings.RenderMode);
         
-        // Setup filename with correct extension for codec
-        var basePath = RenderPaths.ResolveProjectRelativePath(UserSettings.Config.RenderVideoFilePath);
-        var correctExtension = FFMpegRenderSettings.GetFileExtension(renderSettings.Codec);
-        var targetFilePath = Path.ChangeExtension(basePath, correctExtension);
+        // Ensure directory exists for Image Sequence (in case it wasn't created by overwrite check or new folder)
+        if (renderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence)
+        {
+             // Resolve paths
+             var mainFolder = RenderPaths.ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath);
+             var subFolder = UserSettings.Config.RenderSequenceFileName;
+             var prefix = UserSettings.Config.RenderSequencePrefix;
+             
+             // Handle Auto-Increment
+             if (renderSettings.CreateSubFolder && renderSettings.AutoIncrementSubFolder)
+             {
+                 // Find next free folder
+                 var foundPath = RenderPaths.GetNextVersionForFolder(mainFolder, subFolder);
+                 
+                 // Update User Settings to reflect the new state for next time
+                 var newSubFolderName = Path.GetFileName(foundPath);
+                 UserSettings.Config.RenderSequenceFileName = newSubFolderName;
+                 UserSettings.Save();
+                 
+                 subFolder = newSubFolderName;
+             }
+             
+             // Construct final directory
+             var exportDir = renderSettings.CreateSubFolder 
+                             ? Path.Combine(mainFolder, subFolder) 
+                             : mainFolder;
+
+             if (!Directory.Exists(exportDir))
+             {
+                 try { Directory.CreateDirectory(exportDir); }
+                 catch (Exception e) 
+                 {
+                     Log.Error($"Could not create directory {exportDir}: {e.Message}");
+                     return;
+                 }
+             }
+
+             var extension = renderSettings.FileFormat.ToString().ToLower();
+             targetFilePath = Path.Combine(exportDir, $"{prefix}_%04d.{extension}");
+        }
+        else
+        {
+             // We should enforce correct extension just in case.
+             var correctExtension = FFMpegRenderSettings.GetFileExtension(renderSettings.Codec);
+             targetFilePath = Path.ChangeExtension(targetFilePath, correctExtension);
+        }
+        
         LastOutputPath = targetFilePath;
         
         var tempSettings = new RenderSettings()
@@ -167,18 +212,26 @@ internal static class FFMpegRenderProcess
         _frameCount = Math.Max(_renderSettings.FrameCount, 0);
         _exportStartedTime = Playback.RunTimeInSecs;
 
-        _exportStartedTime = Playback.RunTimeInSecs;
+        var channels = 2;
+        var sampleRate = 48000;
+        
+        // Only get audio info if exporting audio and NOT image sequence
+        var exportAudio = renderSettings.ExportAudio && renderSettings.RenderMode != FFMpegRenderSettings.RenderModes.ImageSequence;
+        if (exportAudio)
+        {
+            channels = RenderAudioInfo.SoundtrackChannels();
+            sampleRate = RenderAudioInfo.SoundtrackSampleRate();
+        }
 
-        var channels = RenderAudioInfo.SoundtrackChannels();
-        var sampleRate = RenderAudioInfo.SoundtrackSampleRate();
-
-        _videoWriter = new FFMpegVideoWriter(targetFilePath, MainOutputOriginalSize, renderSettings.ExportAudio, sampleRate, channels)
+        _videoWriter = new FFMpegVideoWriter(targetFilePath, MainOutputOriginalSize, exportAudio, sampleRate, channels)
                            {
                                Bitrate = renderSettings.Bitrate,
                                Framerate = renderSettings.Fps,
                                Codec = renderSettings.Codec,
                                Crf = renderSettings.CrfQuality,
-                               Preset = renderSettings.Preset
+                               Preset = renderSettings.Preset,
+                               IsImageSequence = renderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence,
+                               ImageFormat = renderSettings.FileFormat
                            };
                            
         _videoWriter.Start();
