@@ -8,6 +8,7 @@ using T3.Editor.Gui.UiHelpers;
 using FFMpegCore;
 using System.IO;
 using T3.Editor.Gui.Interaction.Timing;
+using T3.Core.SystemUi;
 
 namespace T3.Editor.Gui.Windows.RenderExport;
 
@@ -85,7 +86,7 @@ internal sealed class FFMpegRenderWindow : Window
             return;
         }
 
-        _lastHelpString = "Ready to render.";
+        _lastHelpString = "Ready to render";
 
         FormInputs.AddVerticalSpace();
         // Only Video supported for now in this window
@@ -100,8 +101,9 @@ internal sealed class FFMpegRenderWindow : Window
         FormInputs.AddVerticalSpace(5);
 
         DrawRenderingControls();
-
-        CustomComponents.HelpText(FFMpegRenderProcess.IsExporting ? FFMpegRenderProcess.LastHelpString : _lastHelpString);
+        
+        FormInputs.AddVerticalSpace(10);
+        DrawSummary();
     }
 
     private static void DrawTimeSetup()
@@ -235,20 +237,73 @@ internal sealed class FFMpegRenderWindow : Window
     {
         if (!FFMpegRenderProcess.IsExporting)
         {
-            if (ImGui.Button("Start FFMpeg Render"))
+            ImGui.PushStyleColor(ImGuiCol.Button, UiColors.BackgroundActive.Rgba);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, UiColors.BackgroundActive.Fade(0.8f).Rgba);
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, UiColors.BackgroundActive.Fade(0.6f).Rgba);
+            
+            if (ImGui.Button("Start FFMpeg Render", new Vector2(-1, 0)))
             {
                 FFMpegRenderProcess.TryStart(FFMpegRenderSettings);
+            }
+            ImGui.PopStyleColor(3);
+
+            if (!string.IsNullOrEmpty(FFMpegRenderProcess.LastOutputPath))
+            {
+                if (ImGui.Button("Open Folder"))
+                {
+                    var folder = Path.GetDirectoryName(FFMpegRenderProcess.LastOutputPath);
+                    if (folder != null && Directory.Exists(folder))
+                    {
+                        CoreUi.Instance.OpenWithDefaultApplication(folder);
+                    }
+                }
+                ImGui.TextDisabled(Path.GetFileName(FFMpegRenderProcess.LastOutputPath));
+                CustomComponents.TooltipForLastItem($"Open folder and select {Path.GetFileName(FFMpegRenderProcess.LastOutputPath)}");
             }
         }
         else
         {
-            ImGui.ProgressBar((float)FFMpegRenderProcess.Progress, new Vector2(-1, 16 * T3Ui.UiScaleFactor));
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, UiColors.BackgroundActive.Rgba);
+            ImGui.PushStyleColor(ImGuiCol.FrameBg, UiColors.BackgroundActive.Fade(0.1f).Rgba);
+            ImGui.ProgressBar((float)FFMpegRenderProcess.Progress, new Vector2(-1, 24 * T3Ui.UiScaleFactor));
+            ImGui.PopStyleColor(2);
 
             if (ImGui.Button("Cancel"))
             {
                 FFMpegRenderProcess.Cancel("Cancelled manually");
             }
         }
+        
+        CustomComponents.HelpText(FFMpegRenderProcess.IsExporting ? FFMpegRenderProcess.LastHelpString : _lastHelpString);
+    }
+
+    private void DrawSummary()
+    {
+        if (FFMpegRenderProcess.IsExporting)
+            return;
+
+        FormInputs.DrawFieldSetHeader("Export Summary");
+        ImGui.Indent();
+        
+        var size = FFMpegRenderProcess.MainOutputRenderedSize;
+        ImGui.TextUnformatted($"Resolution: {size.Width}x{size.Height}");
+        ImGui.TextUnformatted($"Framerate: {FFMpegRenderSettings.Fps} fps");
+        ImGui.TextUnformatted($"Codec: {FFMpegRenderSettings.Codec}");
+        
+        var bitrateMbps = FFMpegRenderSettings.Bitrate / 1_000_000.0;
+        ImGui.TextUnformatted($"Target Bitrate: {bitrateMbps:F1} Mbps");
+        
+        if (FFMpegRenderSettings.ExportAudio)
+            ImGui.TextUnformatted("Audio: Enabled");
+        else
+            ImGui.TextUnformatted("Audio: Disabled");
+
+        ImGui.TextUnformatted($"Total Frames: {FFMpegRenderSettings.FrameCount}");
+        
+        var duration = FFMpegRenderSettings.FrameCount / FFMpegRenderSettings.Fps;
+        ImGui.TextUnformatted($"Video Duration: {duration:F2}s");
+        
+        ImGui.Unindent();
     }
 
     internal override List<Window> GetInstances() => [];

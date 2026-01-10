@@ -23,6 +23,7 @@ namespace T3.Editor.Gui.Windows.RenderExport;
 internal static class FFMpegRenderProcess
 {
     public static string LastHelpString { get; private set; } = string.Empty;
+    public static string LastOutputPath { get; private set; } = string.Empty;
     public static double Progress => _frameCount <= 1 ? 0.0 : (_frameIndex / (double)(_frameCount - 1));
     
     public static Type? MainOutputType { get; private set; }
@@ -106,10 +107,7 @@ internal static class FFMpegRenderProcess
         }
 
         // Update stats
-        var currentFrame =  _frameIndex; // FFMpeg writer doesn't need "skip images" buffering logic as strictly? Maybe it does for readback delay.
-        // Assuming synchronous-ish readback initiation effectively or relying on queue.
-        // If we use async readback, _framIndex might be ahead of written frames.
-        
+        var currentFrame =  _frameIndex;
         var completed = currentFrame >= _frameCount || !success;
 
         if (!completed) 
@@ -145,13 +143,8 @@ internal static class FFMpegRenderProcess
         var basePath = RenderPaths.ResolveProjectRelativePath(UserSettings.Config.RenderVideoFilePath);
         var correctExtension = FFMpegRenderSettings.GetFileExtension(renderSettings.Codec);
         var targetFilePath = Path.ChangeExtension(basePath, correctExtension);
+        LastOutputPath = targetFilePath;
         
-        // Basic validation...
-        
-        // renderSettings.FrameCount = 100; // Placeholder removed
-        // Need to convert renderSettings to RenderSettings type for RenderTiming?
-        // Or duplicate RenderTiming logic.
-        // Quick hack: Create a temp RenderSettings object to pass to utils?
         var tempSettings = new RenderSettings()
         {
             Reference = (RenderSettings.TimeReference)renderSettings.Reference,
@@ -166,7 +159,7 @@ internal static class FFMpegRenderProcess
         IsToollRenderingSomething = true;
         ExportStartedTimeLocal = Core.Animation.Playback.RunTimeInSecs;
 
-        _renderSettings = tempSettings; // Use the casted one for internal usage with RenderTiming
+        _renderSettings = tempSettings;
         
         _frameIndex = 0;
         _frameCount = Math.Max(_renderSettings.FrameCount, 0);
@@ -190,7 +183,7 @@ internal static class FFMpegRenderProcess
 
         RenderTiming.SetPlaybackTimeForFrame(ref _renderSettings, _frameIndex, _frameCount, ref _runtime);
         IsExporting = true;
-        LastHelpString = "Rendering with FFMpeg…";
+        LastHelpString = "Rendering with FFMpeg...";
     }
 
     public static void Cancel(string? reason = null)
@@ -211,16 +204,9 @@ internal static class FFMpegRenderProcess
     // FFMpeg install logic
     public static bool IsFFMpegAvailable()
     {
-        // Simple check
-        // Or check if GlobalFFOptions.Current.BinaryFolder is set and valid
         try 
         {
-            // GlobalFFOptions.Configure(); // default
-            // If ffmpeg is in path, this should be enough?
-            // Actually FFMpegCore wrapper doesn't expose "IsAvailable".
-            // We can check if ffmpeg.exe exists in user binaries folder.
             var folder = GetFFBinariesFolder();
-            // Just return false if folder empty for now to show download button (which now warns)
             return File.Exists(Path.Combine(folder, "ffmpeg.exe"));
         }
         catch
@@ -242,7 +228,6 @@ internal static class FFMpegRenderProcess
 
             Log.Info($"Downloading FFMpeg to {folder}...");
             
-            // Progress not supported in this version of FFMpegCore.Extensions.Downloader
             await FFMpegDownloader.DownloadBinaries(FFMpegCore.Extensions.Downloader.Enums.FFMpegVersions.LatestAvailable, 
                                                     options: new FFOptions { BinaryFolder = folder });
             
@@ -286,6 +271,6 @@ internal static class FFMpegRenderProcess
     private static int _frameIndex;
     private static int _frameCount;
 
-    private static RenderSettings _renderSettings = null!; // Using standard settings for timing helpers
+    private static RenderSettings _renderSettings = null!;
     private static RenderTiming.Runtime _runtime;
 }
