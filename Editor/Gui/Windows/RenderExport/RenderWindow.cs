@@ -289,7 +289,7 @@ internal sealed class RenderWindow : Window
             // is NOT the versioned part. The version is in the directory name.
             if (ActiveSettings.CreateSubFolder)
             {
-                nextTargetPath = Path.GetDirectoryName(nextTargetPath);
+                nextTargetPath = Path.GetDirectoryName(nextTargetPath) ?? nextTargetPath;
             }
             
             var nextVersion = RenderPaths.GetVersionString(nextTargetPath);
