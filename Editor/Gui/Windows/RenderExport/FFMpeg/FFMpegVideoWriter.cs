@@ -116,82 +116,83 @@ internal class FFMpegVideoWriter : IDisposable
                     ? Path.Combine(Path.GetTempPath(), $"tixl_video_{Guid.NewGuid():N}{Path.GetExtension(FilePath)}")
                     : FilePath;
 
-                var processor = args.OutputToFile(firstPassOutput, true, options => {
-                       // Common options
-                       options.UsingMultithreading(true);
-                        
-                       // No audio in first pass - will mux later
-                       options.WithCustomArgument("-an"); // Explicitly no audio
-                       
-                       // Codec specific options
-                       if (IsImageSequence)
-                       {
-                           options.ForceFormat("image2");
+                var processor = args.OutputToFile(firstPassOutput, true, options =>
+                {
+                    // Common options
+                    options.UsingMultithreading(true);
 
-                           switch (ImageFormat)
-                           {
-                               case FFMpegRenderSettings.ImageFileFormats.Png:
-                                   options.WithVideoCodec("png")
-                                          .WithCustomArgument("-compression_level 9"); // Max compression for PNG
-                                   break;
-                               case FFMpegRenderSettings.ImageFileFormats.Jpg:
-                                   options.WithVideoCodec("mjpeg")
-                                          .WithCustomArgument("-q:v 2"); // High quality JPEG
-                                   break;
-                               case FFMpegRenderSettings.ImageFileFormats.WebP:
-                                   options.WithVideoCodec("libwebp")
-                                          .ForcePixelFormat("bgra")
-                                          .WithCustomArgument("-lossless 1")
-                                          .WithCustomArgument($"-quality {WebpQuality}")
-                                          .WithCustomArgument($"-compression_level {WebpCompressionLevel}");
-                                   break;
-                               // Add others if needed
-                           }
-                       }
-                       else 
-                       {
-                           Console.WriteLine($"FFMpegVideoWriter: {Codec}");
-                           switch (Codec)
-                           {
-                               case FFMpegRenderSettings.SelectedCodec.OpenH264:
-                                   options.WithVideoCodec("libx264")
-                                          .WithSpeedPreset(Preset)
-                                          .WithVideoBitrate((int)(Bitrate / 1000))
-                                          .ForcePixelFormat("yuv420p") // H.264 standard
-                                          .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
-                                   if (Crf >= 0) options.WithConstantRateFactor(Crf);
-                                   options.ForceFormat("mp4");
-                                   break;
-                               case FFMpegRenderSettings.SelectedCodec.ProRes:
-                                   options.WithVideoCodec("prores_ks")
-                                          .WithVideoBitrate((int)(Bitrate / 1000))
-                                          .ForcePixelFormat("yuv422p10le")
-                                          .ForceFormat("mov");
-                                   break;
-                               case FFMpegRenderSettings.SelectedCodec.Hap:
-                                   options.WithVideoCodec("hap")
-                                          .ForceFormat("mov")
-                                          .ForcePixelFormat("rgba")
-                                          .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
-                                   break;
-                               case FFMpegRenderSettings.SelectedCodec.HapAlpha:
-                                   options.WithVideoCodec("hap")
-                                          .WithCustomArgument("-format hap_alpha")
-                                          .ForceFormat("mov")
-                                          .ForcePixelFormat("rgba")
-                                          .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
-                                   break;
-                               case FFMpegRenderSettings.SelectedCodec.Vp9:
-                                    options.WithVideoCodec("libvpx-vp9")
-                                           .WithVideoBitrate((int)(Bitrate / 1000))
-                                           .ForcePixelFormat("yuv420p")
-                                           .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
-                                    if (Crf >= 0) options.WithConstantRateFactor(Crf);
-                                    options.ForceFormat("webm");
-                                    break;
-                           }
-                       }
-                   }
+                    // No audio in first pass - will mux later
+                    options.WithCustomArgument("-an"); // Explicitly no audio
+
+                    // Codec specific options
+                    if (IsImageSequence)
+                    {
+                        options.ForceFormat("image2");
+
+                        switch (ImageFormat)
+                        {
+                            case FFMpegRenderSettings.ImageFileFormats.Png:
+                                options.WithVideoCodec("png")
+                                       .WithCustomArgument("-compression_level 9"); // Max compression for PNG
+                                break;
+                            case FFMpegRenderSettings.ImageFileFormats.Jpg:
+                                options.WithVideoCodec("mjpeg")
+                                       .WithCustomArgument("-q:v 2"); // High quality JPEG
+                                break;
+                            case FFMpegRenderSettings.ImageFileFormats.WebP:
+                                options.WithVideoCodec("libwebp")
+                                       .ForcePixelFormat("bgra")
+                                       .WithCustomArgument("-lossless 1")
+                                       .WithCustomArgument($"-quality {WebpQuality}")
+                                       .WithCustomArgument($"-compression_level {WebpCompressionLevel}");
+                                break;
+                                // Add others if needed
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"FFMpegVideoWriter: {Codec}");
+                        switch (Codec)
+                        {
+                            case FFMpegRenderSettings.SelectedCodec.OpenH264:
+                                options.WithVideoCodec("libopenh264")
+                                       .WithSpeedPreset(Preset)
+                                       .WithVideoBitrate((int)(Bitrate / 1000))
+                                       .ForcePixelFormat("yuv420p") // H.264 standard
+                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
+                                if (Crf >= 0) options.WithConstantRateFactor(Crf);
+                                options.ForceFormat("mp4");
+                                break;
+                            case FFMpegRenderSettings.SelectedCodec.ProRes:
+                                options.WithVideoCodec("prores_ks")
+                                       .WithVideoBitrate((int)(Bitrate / 1000))
+                                       .ForcePixelFormat("yuv422p10le")
+                                       .ForceFormat("mov");
+                                break;
+                            case FFMpegRenderSettings.SelectedCodec.Hap:
+                                options.WithVideoCodec("hap")
+                                       .ForceFormat("mov")
+                                       .ForcePixelFormat("rgba")
+                                       .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
+                                break;
+                            case FFMpegRenderSettings.SelectedCodec.HapAlpha:
+                                options.WithVideoCodec("hap")
+                                       .WithCustomArgument("-format hap_alpha")
+                                       .ForceFormat("mov")
+                                       .ForcePixelFormat("rgba")
+                                       .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
+                                break;
+                            case FFMpegRenderSettings.SelectedCodec.Vp9:
+                                options.WithVideoCodec("libvpx-vp9")
+                                       .WithVideoBitrate((int)(Bitrate / 1000))
+                                       .ForcePixelFormat("yuv420p")
+                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
+                                if (Crf >= 0) options.WithConstantRateFactor(Crf);
+                                options.ForceFormat("webm");
+                                break;
+                        }
+                    }
+                }
                    );
 
                 await processor.ProcessAsynchronously();
@@ -330,7 +331,7 @@ internal class FFMpegVideoWriter : IDisposable
 
             if (_isWriting && !_isDisposed)
             {
-                try 
+                try
                 {
                     if (!_frameBuffer.IsAddingCompleted)
                     {
@@ -386,7 +387,7 @@ internal class FFMpegVideoWriter : IDisposable
     public void Dispose()
     {
         if (_isDisposed) return;
-        
+
         _isWriting = false;
         _frameBuffer.CompleteAdding();
 
@@ -401,13 +402,13 @@ internal class FFMpegVideoWriter : IDisposable
         try
         {
             // Give it much more time to flush buffered frames (especially for slow libwebp)
-            _ffmpegTask?.Wait(60000); 
+            _ffmpegTask?.Wait(60000);
         }
         catch (Exception e)
         {
             Log.Debug($"FFMpeg join error: {e.Message}");
         }
-        
+
         _isDisposed = true;
         _frameBuffer.Dispose();
     }
