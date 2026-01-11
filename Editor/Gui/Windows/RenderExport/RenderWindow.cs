@@ -244,15 +244,25 @@ internal sealed class RenderWindow : Window
         UserSettings.Config.RenderVideoFilePath = Path.Combine(directory, filename);
 
         FormInputs.AddCheckBox(RenderWindowStrings.AutoIncrementLabel, ref ActiveSettings.AutoIncrementVersionNumber);
-        if (ActiveSettings.AutoIncrementVersionNumber && !RenderPaths.IsFilenameIncrementable())
+        if (ActiveSettings.AutoIncrementVersionNumber)
         {
-            FormInputs.AddHint(RenderWindowStrings.HintWillAppendVersion);
+            var nextTargetPath = GetCachedTargetFilePath(RenderSettings.RenderModes.Video);
+            var nextVersion = RenderPaths.GetVersionString(nextTargetPath);
+            
+            if (RenderPaths.IsFilenameIncrementable(UserSettings.Config.RenderVideoFilePath))
+            {
+                FormInputs.AddHint($"Next version will be '{nextVersion}'");
+            }
+            else
+            {
+                FormInputs.AddHint($"Suffix '_{nextVersion}' will be added after render");
+            }
         }
 
         FormInputs.AddCheckBox(RenderWindowStrings.ExportAudioLabel, ref ActiveSettings.ExportAudio);
     }
 
-    private static void DrawImageSequenceSettings()
+    private void DrawImageSequenceSettings()
     {
         FormInputs.AddFilePicker(RenderWindowStrings.MainFolderLabel, ref UserSettings.Config.RenderSequenceFilePath!, ".\\ImageSequence ", null, RenderWindowStrings.SaveFolderLabel, FileOperations.FilePickerTypes.Folder);
 
@@ -275,11 +285,25 @@ internal sealed class RenderWindow : Window
         
         if (ActiveSettings.AutoIncrementSubFolder)
         {
-            var targetToIncrement = ActiveSettings.CreateSubFolder ? UserSettings.Config.RenderSequenceFileName : UserSettings.Config.RenderSequencePrefix;
-            var hasVersion = RenderPaths.IsFilenameIncrementable(targetToIncrement);
-            if (!hasVersion)
+            var nextTargetPath = GetCachedTargetFilePath(RenderSettings.RenderModes.ImageSequence);
+            
+            // If we are creating subfolders, the 'prefix' part of the path (the last component) 
+            // is NOT the versioned part. The version is in the directory name.
+            if (ActiveSettings.CreateSubFolder)
             {
-                FormInputs.AddHint(RenderWindowStrings.HintWillAppendVersion);
+                nextTargetPath = Path.GetDirectoryName(nextTargetPath);
+            }
+            
+            var nextVersion = RenderPaths.GetVersionString(nextTargetPath);
+            var targetToIncrement = ActiveSettings.CreateSubFolder ? UserSettings.Config.RenderSequenceFileName : UserSettings.Config.RenderSequencePrefix;
+            
+            if (RenderPaths.IsFilenameIncrementable(targetToIncrement))
+            {
+                FormInputs.AddHint($"Next version will be '{nextVersion}'");
+            }
+            else
+            {
+                FormInputs.AddHint($"Suffix '_{nextVersion}' will be added after render");
             }
         }
     }
@@ -308,13 +332,17 @@ internal sealed class RenderWindow : Window
         ImGui.TextUnformatted($"{duration / 60:0}:{duration % 60:00.0}s ({ActiveSettings.FrameCount} frames)");
         
         ImGui.PushFont(Fonts.FontSmall);
-        ImGui.TextWrapped($"-> {outputPath}");
+        ImGui.TextUnformatted("Export to:");
+        ImGui.SameLine();
+        ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Fade(1.2f).Rgba);
+        ImGui.TextWrapped(outputPath);
+        ImGui.PopStyleColor();
         ImGui.PopFont();
         
         ImGui.PopStyleColor();
     }
     
-    private string GetCachedTargetFilePath(RenderSettings.RenderModes mode)
+    public string GetCachedTargetFilePath(RenderSettings.RenderModes mode)
     {
         var now = Playback.RunTimeInSecs;
         if (now - _uiState.LastPathUpdateTime < 0.2 && !string.IsNullOrEmpty(_uiState.CachedTargetPath))
@@ -522,7 +550,6 @@ internal sealed class RenderWindow : Window
         public const string PrefixLabel = "Filename Prefix";
         public const string AutoIncrementLabel = "Auto-increment version";
         public const string CreateSubFolderLabel = "Create subfolder";
-        public const string HintWillAppendVersion = "Suffix '_v01' will be added after render";
         public const string ExportAudioLabel = "Export Audio (experimental)";
         
         public const string Calculating = "Calculating...";
