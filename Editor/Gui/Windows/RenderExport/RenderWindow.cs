@@ -269,13 +269,11 @@ internal sealed class RenderWindow : Window
         if (FormInputs.AddStringInput(RenderWindowStrings.SubfolderLabel, ref UserSettings.Config.RenderSequenceFileName))
         {
             UserSettings.Config.RenderSequenceFileName = (UserSettings.Config.RenderSequenceFileName ?? string.Empty).Trim();
-            if (string.IsNullOrEmpty(UserSettings.Config.RenderSequenceFileName)) UserSettings.Config.RenderSequenceFileName = "v01";
         }
 
         if (FormInputs.AddStringInput(RenderWindowStrings.PrefixLabel, ref UserSettings.Config.RenderSequencePrefix))
         {
             UserSettings.Config.RenderSequencePrefix = (UserSettings.Config.RenderSequencePrefix ?? string.Empty).Trim();
-            if (string.IsNullOrEmpty(UserSettings.Config.RenderSequencePrefix)) UserSettings.Config.RenderSequencePrefix = "render";
         }
 
         FormInputs.AddEnumDropdown(ref ActiveSettings.FileFormat, RenderWindowStrings.FormatLabel);
@@ -361,6 +359,12 @@ internal sealed class RenderWindow : Window
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, UiColors.BackgroundActive.Rgba);
             ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
             
+            var isValid = ValidateSettings(out var errorMessage);
+            if (!isValid)
+            {
+                ImGui.BeginDisabled();
+            }
+
             if (ImGui.Button(RenderWindowStrings.StartRenderButton, new Vector2(-1, 36 * T3Ui.UiScaleFactor)))
             {
                 var targetPath = GetCachedTargetFilePath(ActiveSettings.RenderMode);
@@ -372,6 +376,13 @@ internal sealed class RenderWindow : Window
                 {
                     RenderProcess.TryStart(ActiveSettings);
                 }
+            }
+
+            if (!isValid)
+            {
+                ImGui.EndDisabled();
+                CustomComponents.TooltipForLastItem(errorMessage);
+                _uiState.LastHelpString = errorMessage;
             }
             ImGui.PopStyleVar();
             ImGui.PopStyleColor(2);
@@ -406,6 +417,38 @@ internal sealed class RenderWindow : Window
             RenderProcess.Cancel(RenderWindowStrings.RenderCancelled + StringUtils.HumanReadableDurationFromSeconds(elapsed));
             }
         }
+    }
+
+    private static bool ValidateSettings(out string errorMessage)
+    {
+        errorMessage = string.Empty;
+
+        if (ActiveSettings.RenderMode == RenderSettings.RenderModes.Video)
+        {
+            var currentPath = UserSettings.Config.RenderVideoFilePath ?? string.Empty;
+            var filename = Path.GetFileNameWithoutExtension(currentPath);
+            if (string.IsNullOrWhiteSpace(filename) || filename == ".")
+            {
+                errorMessage = "Filename cannot be empty.";
+                return false;
+            }
+        }
+        else
+        {
+            if (ActiveSettings.CreateSubFolder && string.IsNullOrWhiteSpace(UserSettings.Config.RenderSequenceFileName))
+            {
+                errorMessage = "Subfolder name cannot be empty.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(UserSettings.Config.RenderSequencePrefix))
+            {
+                errorMessage = "Filename prefix cannot be empty.";
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private void DrawOverwriteDialog()
