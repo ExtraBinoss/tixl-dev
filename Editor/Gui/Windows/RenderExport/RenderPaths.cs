@@ -27,16 +27,58 @@ internal static partial class RenderPaths
 
     public static string GetTargetFilePath(RenderSettings.RenderModes mode)
     {
+        var settings = RenderSettings.Current;
         if (mode == RenderSettings.RenderModes.Video)
         {
-            return ResolveProjectRelativePath(UserSettings.Config.RenderVideoFilePath ?? string.Empty);
+            var targetPath = ResolveProjectRelativePath(UserSettings.Config.RenderVideoFilePath ?? string.Empty);
+            if (settings.AutoIncrementVersionNumber)
+            {
+                if (!IsFilenameIncrementable(targetPath))
+                {
+                    targetPath = GetNextIncrementedPath(targetPath);
+                }
+
+                while (File.Exists(targetPath))
+                {
+                    targetPath = GetNextIncrementedPath(targetPath);
+                }
+            }
+            return targetPath;
         }
 
         var folder = ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath ?? string.Empty);
         var subFolder = UserSettings.Config.RenderSequenceFileName ?? "v01";
         var prefix = UserSettings.Config.RenderSequencePrefix ?? "render";
+        
+        if (settings.AutoIncrementSubFolder)
+        {
+            var targetToIncrement = settings.CreateSubFolder ? subFolder : prefix;
+            if (!IsFilenameIncrementable(targetToIncrement))
+            {
+                targetToIncrement = GetNextIncrementedPath(targetToIncrement);
+            }
 
-        if (RenderSettings.Current.CreateSubFolder)
+            while (true)
+            {
+                var checkPath = settings.CreateSubFolder 
+                                    ? Path.Combine(folder, targetToIncrement, prefix) 
+                                    : Path.Combine(folder, targetToIncrement);
+                
+                if (FileExists(checkPath))
+                {
+                    targetToIncrement = GetNextIncrementedPath(targetToIncrement);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (settings.CreateSubFolder) subFolder = targetToIncrement;
+            else prefix = targetToIncrement;
+        }
+
+        if (settings.CreateSubFolder)
         {
             return Path.Combine(folder, subFolder, prefix);
         }
@@ -51,32 +93,11 @@ internal static partial class RenderPaths
 
         if (mode == RenderSettings.RenderModes.Video)
         {
-            if (settings.AutoIncrementVersionNumber && !IsFilenameIncrementable(targetPath))
-            {
-                targetPath = GetNextIncrementedPath(targetPath);
-            }
             return targetPath;
         }
 
-        // Image sequence
-        var subFolder = UserSettings.Config.RenderSequenceFileName ?? "v01";
-        var prefix = UserSettings.Config.RenderSequencePrefix ?? "render";
-        
-        if (settings.AutoIncrementSubFolder)
-        {
-            var targetToIncrement = settings.CreateSubFolder ? subFolder : prefix;
-            if (!IsFilenameIncrementable(targetToIncrement))
-            {
-                var incremented = GetNextIncrementedPath(targetToIncrement);
-                if (settings.CreateSubFolder) subFolder = incremented;
-                else prefix = incremented;
-            }
-        }
-
-        var folder = ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath ?? string.Empty);
-        var finalBase = settings.CreateSubFolder ? Path.Combine(folder, subFolder, prefix) : Path.Combine(folder, prefix);
-        
-        return $"{finalBase}_####.{settings.FileFormat.ToString().ToLower()}";
+        // Image sequence path
+        return $"{targetPath}_####.{settings.FileFormat.ToString().ToLower()}";
     }
 
     public static bool FileExists(string targetPath)
@@ -147,26 +168,11 @@ internal static partial class RenderPaths
 
     public static void TryIncrementVideoFileNameInUserSettings()
     {
-        var filename = Path.GetFileName(UserSettings.Config.RenderVideoFilePath);
-        if (string.IsNullOrEmpty(filename))
+        var path = UserSettings.Config.RenderVideoFilePath;
+        if (string.IsNullOrEmpty(path) || !IsFilenameIncrementable(path))
             return;
 
-        var result = _matchFileVersionPattern.Match(filename);
-        if (!result.Success)
-            return;
-
-        var versionString = result.Groups[1].Value;
-        if (!int.TryParse(versionString, out var versionNumber))
-            return;
-
-        var digits = Math.Clamp(versionString.Length, 2, 4);
-        var newVersionString = "v" + (versionNumber + 1).ToString("D" + digits);
-        var newFilename = filename.Replace("v" + versionString, newVersionString);
-
-        var directoryName = Path.GetDirectoryName(UserSettings.Config.RenderVideoFilePath);
-        UserSettings.Config.RenderVideoFilePath = directoryName == null
-                                                      ? newFilename
-                                                      : Path.Combine(directoryName, newFilename);
+        UserSettings.Config.RenderVideoFilePath = GetNextIncrementedPath(path);
         UserSettings.Save();
     }
 
@@ -182,7 +188,9 @@ internal static partial class RenderPaths
         var match = _matchFileVersionPattern.Match(filename);
         if (!match.Success)
         {
-            newFilename = filename + "_v01";
+            var extension = Path.GetExtension(filename);
+            var nameWithoutExtension = Path.GetFileNameWithoutExtension(filename);
+            newFilename = nameWithoutExtension + "_v01" + extension;
         }
         else
         {
@@ -191,7 +199,9 @@ internal static partial class RenderPaths
             
             if (!int.TryParse(versionString, out var versionNumber))
             {
-                newFilename = filename + "_v01";
+                var extension = Path.GetExtension(filename);
+                var nameWithoutExtension = Path.GetFileNameWithoutExtension(filename);
+                newFilename = nameWithoutExtension + "_v01" + extension;
             }
             else
             {
