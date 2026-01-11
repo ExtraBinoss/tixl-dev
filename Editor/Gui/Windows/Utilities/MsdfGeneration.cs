@@ -366,7 +366,7 @@ namespace T3.Editor.Gui.Windows.Utilities
         private record GenerationResult(
             bool Success,
             string Message = "",
-            GenerationMetrics Metrics = null,
+            GenerationMetrics? Metrics = null,
             string OutputDir = "");
 
         private static async Task GenerateAsync(SymbolPackage package)
