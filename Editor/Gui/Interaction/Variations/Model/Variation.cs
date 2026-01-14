@@ -5,10 +5,12 @@ using Newtonsoft.Json.Linq;
 using T3.Core.Model;
 using T3.Core.Operator;
 using T3.Core.Operator.Slots;
+using T3.Editor.Gui.Interaction.Keyboard;
 using T3.Editor.Gui.Windows.Variations;
 using T3.Editor.UiModel;
 using T3.Editor.UiModel.Selection;
 using T3.Serialization;
+using T3.SystemUi;
 
 namespace T3.Editor.Gui.Interaction.Variations.Model;
 
@@ -22,6 +24,7 @@ public sealed class Variation : ISelectableCanvasObject
     public string? Title;
     public int ActivationIndex;
     public bool IsPreset;
+    public KeyCombination KeyShortcut = KeyCombination.None;
     
     public Vector2 PosOnCanvas { get; set; }
     public Vector2 Size { get; set; } = VariationThumbnail.ThumbnailSize;
@@ -49,13 +52,14 @@ public sealed class Variation : ISelectableCanvasObject
                        Size = Size,
                        PublishedDate = PublishedDate,
                        IsSelected = IsSelected,
-                       State = State,
-                       ParameterSetsForChildIds =
-                           ParameterSetsForChildIds
-                              .ToDictionary(kv => kv.Key,
-                                            kv =>
-                                                kv.Value.ToDictionary(kv2 => kv2.Key,
-                                                                      kv2 => kv2.Value.Clone())),
+                        State = State,
+                        KeyShortcut = KeyShortcut,
+                        ParameterSetsForChildIds =
+                            ParameterSetsForChildIds
+                               .ToDictionary(kv => kv.Key,
+                                             kv =>
+                                                 kv.Value.ToDictionary(kv2 => kv2.Key,
+                                                                       kv2 => kv2.Value.Clone())),
                    };
     }
 
@@ -79,6 +83,7 @@ public sealed class Variation : ISelectableCanvasObject
                                    Title = jToken[nameof(Title)]?.Value<string>() ?? String.Empty,
                                    ActivationIndex = jToken[nameof(ActivationIndex)]?.Value<int>() ?? -1,
                                    IsPreset = jToken[nameof(IsPreset)]?.Value<bool>() ?? false,
+                                   KeyShortcut = KeyCombination.ParseShortcutString(jToken[nameof(KeyShortcut)]?.Value<string>() ?? string.Empty) ?? KeyCombination.None,
                                    ParameterSetsForChildIds = new Dictionary<Guid, Dictionary<Guid, InputValue>>(),
                                };
         
@@ -180,6 +185,9 @@ public sealed class Variation : ISelectableCanvasObject
             writer.WriteValue(nameof(IsPreset), IsPreset);
             writer.WriteValue(nameof(ActivationIndex), ActivationIndex);
             
+            if(KeyShortcut.Key != Key.Undefined)
+                writer.WriteObject(nameof(KeyShortcut), KeyShortcut.ToString());
+
             if(!string.IsNullOrEmpty(Title))
                 writer.WriteObject(nameof(Title), Title);
             

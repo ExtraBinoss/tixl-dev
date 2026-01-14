@@ -6,14 +6,14 @@ namespace T3.Editor.Gui.Interaction.Keyboard;
 /// <summary>
 /// Defines a combination that can be saved with a keymap
 /// </summary>
-internal  struct KeyCombination(Key key, bool ctrl = false, bool alt = false, bool shift = false)
+public struct KeyCombination(Key key, bool ctrl = false, bool alt = false, bool shift = false)
 {
     public Key Key = key;
     public bool Ctrl = ctrl;
     public bool Alt = alt;
     public bool Shift = shift;
     
-    internal bool ModifiersMatch(ImGuiIOPtr io)
+    public bool ModifiersMatch(ImGuiIOPtr io)
     {
         return (!Alt || io.KeyAlt) && (Alt || !io.KeyAlt)
                                                && (!Ctrl || io.KeyCtrl) && (Ctrl || !io.KeyCtrl)
@@ -21,7 +21,7 @@ internal  struct KeyCombination(Key key, bool ctrl = false, bool alt = false, bo
     }    
     
     // TODO: Refactor into try pattern
-    internal static KeyCombination? ParseShortcutString(string shortcut)
+    public static KeyCombination? ParseShortcutString(string shortcut)
     {
         try
         {
@@ -59,6 +59,6 @@ internal  struct KeyCombination(Key key, bool ctrl = false, bool alt = false, bo
         return string.Join("+", parts);
     }
 
-    internal static KeyCombination None => new(Key.Undefined);
+    public static KeyCombination None => new(Key.Undefined);
 
 }

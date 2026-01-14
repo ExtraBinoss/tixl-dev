@@ -3,6 +3,7 @@ using SharpDX.Direct3D11;
 using T3.Core.DataTypes.Vector;
 using T3.Core.Operator;
 using T3.Core.Utils;
+using T3.SystemUi;
 using T3.Editor.Gui.Interaction.Variations;
 using T3.Editor.Gui.Interaction.Variations.Model;
 using T3.Editor.Gui.Styling;
@@ -90,6 +91,15 @@ internal static class VariationThumbnail
         drawList.AddText(pMin + new Vector2(sizeOnScreen.X - bottomPadding, sizeOnScreen.Y - bottomPadding),
                          UiColors.Text.Fade(0.3f * fade),
                          $"{variation.ActivationIndex:00}");
+
+        if (variation.KeyShortcut.Key != Key.Undefined)
+        {
+            var label = variation.KeyShortcut.ToString();
+            var labelSize = ImGui.CalcTextSize(label);
+            drawList.AddText(pMin + new Vector2(sizeOnScreen.X - labelSize.X - 4, 2),
+                             UiColors.StatusAttention.Fade(0.8f * fade),
+                             label);
+        }
 
         ImGui.PopFont();
 

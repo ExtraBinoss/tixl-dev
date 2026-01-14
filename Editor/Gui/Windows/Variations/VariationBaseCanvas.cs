@@ -14,6 +14,7 @@ using T3.Editor.Gui.Windows.Exploration;
 using T3.Editor.Gui.Windows.Output;
 using T3.Editor.UiModel;
 using T3.Editor.UiModel.Selection;
+using T3.SystemUi;
 using Point = T3.Editor.Gui.UiHelpers.DelaunayVoronoi.Point;
 using Vector2 = System.Numerics.Vector2;
 
@@ -108,6 +109,19 @@ internal abstract class VariationBaseCanvas : ScalableCanvas, ISelectionContaine
 
         if (modified)
             PoolForBlendOperations.SaveVariationsToFile();
+
+        // Handle keyboard shortcuts
+        if (!ImGui.IsAnyItemActive())
+        {
+            var io = ImGui.GetIO();
+            foreach (var v in PoolForBlendOperations.AllVariations)
+            {
+                if (v.KeyShortcut.Key != Key.Undefined && v.KeyShortcut.ModifiersMatch(io) && ImGui.IsKeyPressed((ImGuiKey)v.KeyShortcut.Key, false))
+                {
+                    Apply(v, InstanceForBlendOperations);
+                }
+            }
+        }
 
         DrawContextMenu(InstanceForBlendOperations);
     }
@@ -362,35 +376,71 @@ internal abstract class VariationBaseCanvas : ScalableCanvas, ISelectionContaine
                                                                 var oneOrMoreSelected = CanvasElementSelection.SelectedElements.Count > 0;
                                                                 var oneSelected = CanvasElementSelection.SelectedElements.Count == 1;
 
-                                                                if (ImGui.MenuItem("Delete selected",
-                                                                                   "Del", // We should use the correct assigned short cut, but "Del or Backspace" is too long for layout
-                                                                                   false,
-                                                                                   oneOrMoreSelected))
-                                                                {
-                                                                    DeleteSelectedElements();
-                                                                }
+                                                                 if (ImGui.MenuItem("Rename",
+                                                                                    "",
+                                                                                    false,
+                                                                                    oneSelected))
+                                                                 {
+                                                                     VariationThumbnail.VariationForRenaming = CanvasElementSelection.SelectedElements[0] as Variation;
+                                                                 }
 
-                                                                if (ImGui.MenuItem("Rename",
-                                                                                   "",
-                                                                                   false,
-                                                                                   oneSelected))
-                                                                {
-                                                                    VariationThumbnail.VariationForRenaming = CanvasElementSelection.SelectedElements[0] as Variation;
-                                                                }
+                                                                 if (ImGui.MenuItem("Delete selected",
+                                                                                    "Del",
+                                                                                    false,
+                                                                                    oneOrMoreSelected))
+                                                                 {
+                                                                     DeleteSelectedElements();
+                                                                 }
 
-                                                                if (ImGui.MenuItem("Update thumbnails",
-                                                                                   ""))
-                                                                {
-                                                                    _rerenderManuallyRequested = true;
-                                                                    TriggerThumbnailUpdate();
-                                                                }
+                                                                 ImGui.Separator();
+                                                                 DrawAdditionalContextMenuContent(instance);
+                                                                 
+                                                                 if (oneSelected && CanvasElementSelection.SelectedElements[0] is Variation selectedVariation)
+                                                                 {
+                                                                     ImGui.Separator();
+                                                                     if (ImGui.BeginMenu("Assign Shortcut"))
+                                                                     {
+                                                                         var keyPressed = KeyHandler.GetPressedKey();
+                                                                         if (keyPressed != Key.Undefined)
+                                                                         {
+                                                                             selectedVariation.KeyShortcut.Key = keyPressed;
+                                                                             PoolForBlendOperations?.SaveVariationsToFile();
+                                                                         }
 
-                                                                ImGui.Separator();
-                                                                ImGui.MenuItem("Live Render Previews", "", ref UserSettings.Config.VariationLiveThumbnails,
-                                                                               true);
-                                                                ImGui.MenuItem("Preview on Hover", "", ref UserSettings.Config.VariationHoverPreview, true);
+                                                                         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(4, 4));
+                                                                         CustomComponents.ToggleButton(ref selectedVariation.KeyShortcut.Ctrl, "Ctrl", new Vector2(40, 0));
+                                                                         ImGui.SameLine();
+                                                                         CustomComponents.ToggleButton(ref selectedVariation.KeyShortcut.Alt, "Alt", new Vector2(40, 0));
+                                                                         ImGui.SameLine();
+                                                                         CustomComponents.ToggleButton(ref selectedVariation.KeyShortcut.Shift, "Shift", new Vector2(40, 0));
+                                                                         ImGui.PopStyleVar();
 
-                                                                DrawAdditionalContextMenuContent(instance);
+                                                                         var keyName = selectedVariation.KeyShortcut.Key == Key.Undefined ? "None" : selectedVariation.KeyShortcut.Key.ToString();
+                                                                         ImGui.TextUnformatted($"Key: {keyName}");
+                                                                         
+                                                                         if (ImGui.MenuItem("Clear Shortcut", null, false, selectedVariation.KeyShortcut.Key != Key.Undefined))
+                                                                         {
+                                                                             selectedVariation.KeyShortcut = KeyCombination.None;
+                                                                             PoolForBlendOperations?.SaveVariationsToFile();
+                                                                         }
+                                                                         
+                                                                         ImGui.EndMenu();
+                                                                     }
+                                                                 }
+
+                                                                 ImGui.Separator();
+                                                                 if (ImGui.BeginMenu("View settings"))
+                                                                 {
+                                                                     ImGui.MenuItem("Live Render Previews", "", ref UserSettings.Config.VariationLiveThumbnails);
+                                                                     ImGui.MenuItem("Preview on Hover", "", ref UserSettings.Config.VariationHoverPreview);
+
+                                                                     if (ImGui.MenuItem("Update thumbnails"))
+                                                                     {
+                                                                         _rerenderManuallyRequested = true;
+                                                                         TriggerThumbnailUpdate();
+                                                                     }
+                                                                     ImGui.EndMenu();
+                                                                 }
                                                             }, ref _contextMenuIsOpen);
         }
     }
