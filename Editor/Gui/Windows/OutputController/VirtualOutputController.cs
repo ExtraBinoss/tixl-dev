@@ -16,6 +16,10 @@ using T3.Core.Operator.Slots;
 using T3.Editor.Gui.Input;
 using T3.Editor.UiModel.Commands;
 using T3.Editor.UiModel.Commands.Graph;
+using T3.Editor.Gui.InputUi;
+using T3.Editor.UiModel.InputsAndTypes;
+using T3.Core.DataTypes;
+using T3.Core.Resource;
 
 namespace T3.Editor.Gui.Windows.OutputController;
 
@@ -29,6 +33,9 @@ internal sealed class VirtualOutputController : Window
         Config.Title = "Mixer";
         Config.Visible = true;
         _variationCanvas = new OutputControllerCanvas(this);
+        
+        // Set larger initial window size for better breathing room
+        ImGui.SetNextWindowSize(new Vector2(900, 650), ImGuiCond.FirstUseEver);
     }
 
     private class ControllerSlot
@@ -41,8 +48,12 @@ internal sealed class VirtualOutputController : Window
     }
 
     private const int SlotCount = 8;
-    private const float DeckRowHeight = 100f;
-    private const float DashboardWidth = 350f;
+    private const float DeckRowHeight = 110f;  // Slightly taller for better proportions
+    private const float MinDashboardWidth = 250f;
+    private const float MaxDashboardWidth = 500f;
+    private const float DefaultDashboardWidth = 380f;
+    private const float SplitterWidth = 6f;
+    private const float ContentPadding = 12f;  // Modern padding for breathing room
     
     private readonly ControllerSlot[] _slots = new ControllerSlot[SlotCount];
     private int _selectedSlotIndex = -1;
@@ -52,49 +63,110 @@ internal sealed class VirtualOutputController : Window
     
     private string _nodeFilter = "";
     private int _pendingNodePickerSlot = -1;
+    private float _dashboardWidth = DefaultDashboardWidth;
+    private bool _isDraggingSplitter = false;
 
     protected override void DrawContent()
     {
         var windowSize = ImGui.GetContentRegionAvail();
+        var style = ImGui.GetStyle();
+        
+        // Add subtle left padding for modern look (matching bottom panels)
+        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ContentPadding);
         
         // ============================================
         // TOP: DECK ROW (Horizontal slots like Resolume)
         // ============================================
-        DrawDeckRow(windowSize.X);
+        DrawDeckRow(windowSize.X - ContentPadding * 2);
         
         ImGui.Spacing();
         
         // ============================================
-        // BOTTOM: Dashboard + Variation Canvas
+        // BOTTOM: Dashboard + Resizable Splitter + Variation Canvas
         // ============================================
         var remainingHeight = ImGui.GetContentRegionAvail().Y;
         
+        // Add left padding to match deck row
+        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ContentPadding);
+        
         // Left: Dashboard Panel
-        ImGui.BeginChild("Dashboard", new Vector2(DashboardWidth, remainingHeight), true);
+        ImGui.BeginChild("Dashboard", new Vector2(_dashboardWidth, remainingHeight), true);
         {
             DrawDashboard();
         }
         ImGui.EndChild();
         
-        ImGui.SameLine();
+        // Splitter (resizable divider)
+        ImGui.SameLine(0, 0);
+        DrawHorizontalSplitter(remainingHeight);
         
-        // Right: Variation Canvas (Mixer Grid)
-        ImGui.BeginChild("MixerCanvas", new Vector2(-1, remainingHeight), true, 
+        ImGui.SameLine(0, 0);
+        
+        // Right: Variation Canvas (Mixer Grid) - takes remaining width minus right padding
+        var canvasWidth = windowSize.X - _dashboardWidth - SplitterWidth - ContentPadding * 2;
+        ImGui.BeginChild("MixerCanvas", new Vector2(canvasWidth, remainingHeight), true, 
             ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoScrollbar);
         {
             DrawMixerCanvas();
         }
         ImGui.EndChild();
     }
+    
+    private void DrawHorizontalSplitter(float height)
+    {
+        var drawList = ImGui.GetWindowDrawList();
+        var cursorPos = ImGui.GetCursorScreenPos();
+        
+        // Splitter button area
+        ImGui.InvisibleButton("##HSplitter", new Vector2(SplitterWidth, height));
+        
+        var isHovered = ImGui.IsItemHovered();
+        var isActive = ImGui.IsItemActive();
+        
+        // Handle dragging
+        if (isActive && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+        {
+            _isDraggingSplitter = true;
+            _dashboardWidth += ImGui.GetIO().MouseDelta.X;
+            _dashboardWidth = Math.Clamp(_dashboardWidth, MinDashboardWidth, MaxDashboardWidth);
+        }
+        else if (_isDraggingSplitter && ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+        {
+            _isDraggingSplitter = false;
+        }
+        
+        // Visual feedback
+        var splitterColor = isActive 
+            ? UiColors.StatusAnimated 
+            : (isHovered ? UiColors.ForegroundFull.Fade(0.5f) : UiColors.BackgroundGaps);
+        
+        // Draw splitter bar (thinner visual indicator in the center)
+        var barWidth = 2f;
+        var barX = cursorPos.X + (SplitterWidth - barWidth) / 2;
+        drawList.AddRectFilled(
+            new Vector2(barX, cursorPos.Y + 4), 
+            new Vector2(barX + barWidth, cursorPos.Y + height - 4), 
+            splitterColor, 
+            1f);
+        
+        // Change cursor on hover
+        if (isHovered || isActive)
+        {
+            ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
+        }
+    }
 
     private void DrawDeckRow(float totalWidth)
     {
         var style = ImGui.GetStyle();
-        var slotWidth = (totalWidth - (SlotCount - 1) * style.ItemSpacing.X - style.WindowPadding.X * 2) / SlotCount;
+        var internalPadding = ContentPadding;  // Internal left padding
+        var adjustedWidth = totalWidth - internalPadding * 2;
+        var slotWidth = (adjustedWidth - (SlotCount - 1) * style.ItemSpacing.X) / SlotCount;
         var slotHeight = DeckRowHeight;
         
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 4f);
-        ImGui.BeginChild("DeckRow", new Vector2(-1, slotHeight + style.WindowPadding.Y * 2), true);
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 8f);  // More modern rounded corners
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(internalPadding, internalPadding));
+        ImGui.BeginChild("DeckRow", new Vector2(totalWidth, slotHeight + internalPadding * 2), true);
         {
             for (int i = 0; i < SlotCount; i++)
             {
@@ -103,7 +175,7 @@ internal sealed class VirtualOutputController : Window
             }
         }
         ImGui.EndChild();
-        ImGui.PopStyleVar();
+        ImGui.PopStyleVar(2);
     }
 
     private void DrawSlot(int index, float width, float height)
@@ -124,7 +196,7 @@ internal sealed class VirtualOutputController : Window
             ? UiColors.BackgroundFull.Fade(0.3f) 
             : (isSelected ? UiColors.BackgroundActive : UiColors.BackgroundFull.Fade(0.6f));
         
-        drawList.AddRectFilled(slotMin, slotMax, bgColor, 6f);
+        drawList.AddRectFilled(slotMin, slotMax, bgColor, 8f);
         
         // Interactive area
         ImGui.InvisibleButton($"##slot_{index}", new Vector2(width, height));
@@ -158,15 +230,15 @@ internal sealed class VirtualOutputController : Window
         // Draw slot content
         if (slot.IsEmpty)
         {
-            // Empty slot: Draw "+" icon
+            // Empty slot: Draw "+" icon (vertically centered)
             var iconSize = ImGui.CalcTextSize("+");
-            var iconPos = slotMin + new Vector2((width - iconSize.X) / 2, (height - iconSize.Y) / 2);
+            var iconPos = slotMin + new Vector2((width - iconSize.X) / 2, (height - iconSize.Y) / 2 - 8);
             drawList.AddText(iconPos, isHovered ? UiColors.ForegroundFull : UiColors.TextMuted, "+");
             
             // Hint text
-            var hintText = "Add Node";
+            var hintText = "Add Operator";
             var hintSize = ImGui.CalcTextSize(hintText);
-            var hintPos = slotMin + new Vector2((width - hintSize.X) / 2, height - hintSize.Y - 8);
+            var hintPos = slotMin + new Vector2((width - hintSize.X) / 2, height - hintSize.Y - 12);
             drawList.AddText(Fonts.FontSmall, Fonts.FontSmall.FontSize, hintPos, UiColors.TextMuted.Fade(0.5f), hintText);
         }
         else
@@ -178,11 +250,11 @@ internal sealed class VirtualOutputController : Window
         // Selection border
         if (isSelected)
         {
-            drawList.AddRect(slotMin, slotMax, UiColors.StatusAnimated, 6f, ImDrawFlags.None, 2f);
+            drawList.AddRect(slotMin, slotMax, UiColors.StatusAnimated, 8f, ImDrawFlags.None, 2f);
         }
         else if (isHovered)
         {
-            drawList.AddRect(slotMin, slotMax, UiColors.ForegroundFull.Fade(0.3f), 6f);
+            drawList.AddRect(slotMin, slotMax, UiColors.ForegroundFull.Fade(0.3f), 8f);
         }
         
         // Context menu
@@ -212,36 +284,88 @@ internal sealed class VirtualOutputController : Window
     private void DrawFilledSlotContent(ControllerSlot slot, Vector2 slotMin, float width, float height, bool isSelected)
     {
         var drawList = ImGui.GetWindowDrawList();
+        var instance = slot.LinkedInstance;
         
-        // Slot number indicator
+        // Slot number indicator (top left corner)
         var slotNumber = $"{Array.IndexOf(_slots, slot) + 1}";
-        drawList.AddText(slotMin + new Vector2(8, 6), UiColors.TextMuted, slotNumber);
+        drawList.AddText(slotMin + new Vector2(8, 8), UiColors.TextMuted, slotNumber);
         
-        // Operator name (centered, bold)
-        ImGui.PushFont(Fonts.FontBold);
-        var nameText = slot.Name.Length > 12 ? slot.Name[..10] + "…" : slot.Name;
-        var nameSize = ImGui.CalcTextSize(nameText);
-        var namePos = slotMin + new Vector2((width - nameSize.X) / 2, 25);
-        drawList.AddText(Fonts.FontBold, Fonts.FontBold.FontSize, namePos, 
-            isSelected ? UiColors.ForegroundFull : UiColors.Text, nameText);
-        ImGui.PopFont();
+        // Try to render live texture preview
+        var hasPreview = false;
+        if (instance != null && instance.Outputs.Count > 0)
+        {
+            var firstOutput = instance.Outputs[0];
+            if (firstOutput is Slot<Texture2D> textureSlot && textureSlot.Value != null && !textureSlot.Value.IsDisposed)
+            {
+                var texture = textureSlot.Value;
+                var previewSrv = SrvManager.GetSrvForTexture(texture);
+                
+                if (previewSrv != null)
+                {
+                    hasPreview = true;
+                    
+                    // Calculate preview area (fill slot with aspect ratio preservation)
+                    var textureAspect = (float)texture.Description.Width / texture.Description.Height;
+                    var slotAspect = width / (height - 24);  // Leave room for name at bottom
+                    
+                    var previewWidth = width - 8;  // Padding
+                    var previewHeight = height - 32;  // Room for name
+                    
+                    if (textureAspect > slotAspect)
+                    {
+                        // Texture is wider, fit to width
+                        previewHeight = previewWidth / textureAspect;
+                    }
+                    else
+                    {
+                        // Texture is taller, fit to height
+                        previewWidth = previewHeight * textureAspect;
+                    }
+                    
+                    var previewX = slotMin.X + (width - previewWidth) / 2;
+                    var previewY = slotMin.Y + 8;  // Top padding
+                    
+                    var pMin = new Vector2(previewX, previewY);
+                    var pMax = pMin + new Vector2(previewWidth, previewHeight);
+                    
+                    // Draw the texture preview
+                    drawList.AddImage((IntPtr)previewSrv, pMin, pMax);
+                    
+                    // Selection highlight border on preview
+                    if (isSelected)
+                    {
+                        drawList.AddRect(pMin, pMax, UiColors.StatusAnimated.Fade(0.5f), 4f);
+                    }
+                }
+            }
+        }
         
-        // Parameter count
-        var paramCount = $"{slot.Parameters.Count} params";
-        var paramSize = ImGui.CalcTextSize(paramCount);
-        var paramPos = slotMin + new Vector2((width - paramSize.X) / 2, height - 20);
-        drawList.AddText(Fonts.FontSmall, Fonts.FontSmall.FontSize, paramPos, UiColors.TextMuted, paramCount);
+        // If no preview, show operator name centered
+        if (!hasPreview)
+        {
+            ImGui.PushFont(Fonts.FontBold);
+            var nameText = slot.Name.Length > 12 ? slot.Name[..10] + "…" : slot.Name;
+            var nameSize = ImGui.CalcTextSize(nameText);
+            var namePos = slotMin + new Vector2((width - nameSize.X) / 2, (height - nameSize.Y) / 2 - 10);
+            drawList.AddText(Fonts.FontBold, Fonts.FontBold.FontSize, namePos, 
+                isSelected ? UiColors.ForegroundFull : UiColors.Text, nameText);
+            ImGui.PopFont();
+        }
+        
+        // Operator name at bottom (always shown)
+        var bottomName = slot.Name.Length > 14 ? slot.Name[..12] + "…" : slot.Name;
+        var bottomSize = ImGui.CalcTextSize(bottomName);
+        var bottomPos = slotMin + new Vector2((width - bottomSize.X) / 2, height - bottomSize.Y - 8);
+        drawList.AddText(Fonts.FontSmall, Fonts.FontSmall.FontSize, bottomPos, 
+            isSelected ? UiColors.ForegroundFull : UiColors.TextMuted, bottomName);
     }
 
     private void DrawDashboard()
     {
         if (_selectedSlotIndex == -1 || _slots[_selectedSlotIndex] == null || _slots[_selectedSlotIndex].IsEmpty)
         {
-            // Empty state
-            var center = ImGui.GetContentRegionAvail() / 2;
-            ImGui.SetCursorPos(center - new Vector2(0, 40));
-            CustomComponents.EmptyWindowMessage(
-                "Select a deck slot above\nto control its parameters.\n\nClick + to add an operator,\nor select one in the graph first.");
+            // Show operator list when no slot is selected
+            DrawOperatorList();
             return;
         }
 
@@ -300,6 +424,85 @@ internal sealed class VirtualOutputController : Window
         }
         ImGui.EndChild();
     }
+    
+    private void DrawOperatorList()
+    {
+        ImGui.PushFont(Fonts.FontLarge);
+        ImGui.TextUnformatted("Operators in Graph");
+        ImGui.PopFont();
+        
+        CustomComponents.SeparatorLine();
+        CustomComponents.HelpText("Click an operator to assign it to the selected deck slot, or select a slot above first.");
+        
+        var compositionOp = ProjectView.Focused?.CompositionInstance;
+        if (compositionOp == null)
+        {
+            CustomComponents.EmptyWindowMessage("No composition open");
+            return;
+        }
+        
+        ImGui.BeginChild("OperatorListScroll", new Vector2(-1, -1));
+        {
+            var drawList = ImGui.GetWindowDrawList();
+            var itemHeight = 28f;
+            
+            foreach (var child in compositionOp.Children.Values)
+            {
+                var name = child.SymbolChild.ReadableName;
+                var symbol = child.Symbol;
+                
+                // Get the operator's color from its primary output type
+                var operatorColor = UiColors.TextMuted;
+                if (symbol.OutputDefinitions.Count > 0)
+                {
+                    operatorColor = TypeUiRegistry.GetPropertiesForType(symbol.OutputDefinitions[0]?.ValueType).Color;
+                }
+                
+                ImGui.PushID(child.SymbolChildId.GetHashCode());
+                
+                var cursorPos = ImGui.GetCursorScreenPos();
+                var itemWidth = ImGui.GetContentRegionAvail().X;
+                
+                // Draw color indicator bar
+                drawList.AddRectFilled(
+                    cursorPos, 
+                    cursorPos + new Vector2(4, itemHeight - 4), 
+                    operatorColor, 
+                    2f);
+                
+                ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 12);
+                
+                if (ImGui.Selectable($"{name}##op", false, ImGuiSelectableFlags.None, new Vector2(itemWidth - 12, itemHeight - 4)))
+                {
+                    // If a slot is selected, assign to it; otherwise assign to first empty slot
+                    var targetSlot = _selectedSlotIndex >= 0 ? _selectedSlotIndex : FindFirstEmptySlot();
+                    if (targetSlot >= 0)
+                    {
+                        AssignInstanceToSlot(targetSlot, child);
+                    }
+                }
+                
+                // Show symbol type on hover
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip($"Type: {symbol.Name}");
+                }
+                
+                ImGui.PopID();
+            }
+        }
+        ImGui.EndChild();
+    }
+    
+    private int FindFirstEmptySlot()
+    {
+        for (int i = 0; i < SlotCount; i++)
+        {
+            if (_slots[i] == null || _slots[i].IsEmpty)
+                return i;
+        }
+        return -1;
+    }
 
     private void DrawMixerCanvas()
     {
@@ -316,7 +519,6 @@ internal sealed class VirtualOutputController : Window
     private void DrawNodePicker(int slotIndex)
     {
         ImGui.TextUnformatted("Select Operator");
-        ImGui.Separator();
         
         ImGui.SetNextItemWidth(280);
         CustomComponents.DrawInputFieldWithPlaceholder("Search nodes...", ref _nodeFilter, 280);

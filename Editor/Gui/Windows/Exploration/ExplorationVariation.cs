@@ -27,6 +27,7 @@ internal sealed class ExplorationVariation
     public ExplorationVariation Clone(Structure structure)
     {
         var newVariation = new ExplorationVariation(new Dictionary<VariationParameter, InputValue>(ValuesForParameters));
+        newVariation.GridCell = GridCell;
         newVariation.UpdateUndoCommand(structure);
         return newVariation;
     }

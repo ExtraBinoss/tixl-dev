@@ -26,6 +26,10 @@ internal sealed class OutputControllerCanvas : ScalableCanvas
         ResetView();
         _outputController = outputController;
     }
+    
+    // Selected variation tracking
+    private ExplorationVariation? _selectedVariation;
+    public ExplorationVariation? SelectedVariation => _selectedVariation;
 
     public void Draw(Structure? structure)
     {
@@ -107,12 +111,12 @@ internal sealed class OutputControllerCanvas : ScalableCanvas
 
             if (_hoveringVariation != null)
             {
-                if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+                if (ImGui.IsItemClicked(ImGuiMouseButton.Left) || (ImGui.IsItemHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left)))
                 {
-                    // No saving yet
-                    // var savedVariation = _hoveringVariation.Clone(structure);
-                    // _outputController.SaveVariation(savedVariation);
-                    // savedVariation.ApplyPermanently();
+                    // Select this variation and apply its parameters permanently
+                    _selectedVariation = _hoveringVariation.Clone(structure);
+                    _selectedVariation.GridCell = GetScreenRectForGridCell(ImGui.GetMousePos());
+                    _selectedVariation.ApplyPermanently();
                 }
 
                 _hoveringVariation.KeepCurrentAndApplyNewValues(structure);
@@ -122,6 +126,13 @@ internal sealed class OutputControllerCanvas : ScalableCanvas
         {
             _hoveringVariation = null;
         }
+        
+        // Draw selection outline for selected variation
+        if (_selectedVariation != null)
+        {
+            var selectedRect = GetScreenRectForCell(_selectedVariation.GridCell);
+            drawList.AddRect(selectedRect.Min, selectedRect.Max, UiColors.StatusAnimated, 0f, ImDrawFlags.None, 3f);
+        }
     }
 
     public void ClearVariations()
@@ -129,15 +140,16 @@ internal sealed class OutputControllerCanvas : ScalableCanvas
         _currentOffsetIndexForFocus = 0;
         _updateCompleted = false;
         _variationByGridIndex.Clear();
+        _selectedVariation = null;
     }
 
     public void ResetView()
     {
-        var extend = new Vector2(3, 3);
+        // Smaller default zoom for better GPU performance
+        var extend = new Vector2(7, 7);  // Larger extend = more zoomed out = fewer tiles rendered
         var center = new Vector2(GridCell.VariationGridSize / 2f, GridCell.VariationGridSize / 2f);
         var left = (center - extend) * _thumbnailSize;
         var right = (center + extend) * _thumbnailSize;
-        //UserSettings.Config.ZoomSpeed = 20000;
 
         FitAreaOnCanvas(new ImRect(left, right));
     }
