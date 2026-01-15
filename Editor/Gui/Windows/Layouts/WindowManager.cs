@@ -10,6 +10,7 @@ using T3.Editor.Gui.Windows.Output;
 using T3.Editor.Gui.Windows.RenderExport;
 using T3.Editor.Gui.Windows.SymbolLib;
 using T3.Editor.Gui.Windows.Variations;
+using T3.Editor.Gui.Windows.OutputController;
 
 namespace T3.Editor.Gui.Windows.Layouts;
 
@@ -62,6 +63,7 @@ internal static partial class WindowManager
                 new AssetLibrary(),
                 new VariationsWindow(),
                 new ExplorationWindow(),
+                new VirtualOutputController(),
                 new RenderWindow(),
                 new IoViewWindow(),
                 Program.ConsoleLogWindow,
