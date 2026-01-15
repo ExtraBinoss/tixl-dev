@@ -48,12 +48,12 @@ internal sealed class VirtualOutputController : Window
     }
 
     private const int SlotCount = 8;
-    private const float DeckRowHeight = 110f;  // Slightly taller for better proportions
+    private const float DeckRowHeight = 125f;  // Balanced height for preview + text
     private const float MinDashboardWidth = 250f;
     private const float MaxDashboardWidth = 500f;
     private const float DefaultDashboardWidth = 380f;
     private const float SplitterWidth = 6f;
-    private const float ContentPadding = 12f;  // Modern padding for breathing room
+    private const float ContentPadding = 16f;  // Increased for more breathing room
     
     private readonly ControllerSlot[] _slots = new ControllerSlot[SlotCount];
     private int _selectedSlotIndex = -1;
@@ -69,26 +69,24 @@ internal sealed class VirtualOutputController : Window
     protected override void DrawContent()
     {
         var windowSize = ImGui.GetContentRegionAvail();
-        var style = ImGui.GetStyle();
         
-        // Add vertical padding for "Apple-like" breathing room
+        // Global breathing room
         ImGui.SetCursorPosY(ImGui.GetCursorPosY() + ContentPadding);
-        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ContentPadding);
+        ImGui.Indent(ContentPadding);
         
         // ============================================
         // TOP: DECK ROW (Horizontal slots like Resolume)
         // ============================================
         DrawDeckRow(windowSize.X - ContentPadding * 2);
         
-        ImGui.Spacing();
+        ImGui.Unindent(ContentPadding);
+        ImGui.Dummy(new Vector2(0, ContentPadding)); // Spacer between sections
+        ImGui.Indent(ContentPadding);
         
         // ============================================
         // BOTTOM: Dashboard + Resizable Splitter + Variation Canvas
         // ============================================
         var remainingHeight = ImGui.GetContentRegionAvail().Y;
-        
-        // Add left padding to match deck row
-        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ContentPadding);
         
         // Left: Dashboard Panel
         ImGui.BeginChild("Dashboard", new Vector2(_dashboardWidth, remainingHeight), true);
@@ -111,6 +109,8 @@ internal sealed class VirtualOutputController : Window
             DrawMixerCanvas();
         }
         ImGui.EndChild();
+        
+        ImGui.Unindent(ContentPadding);
     }
     
     private void DrawHorizontalSplitter(float height)
@@ -165,10 +165,13 @@ internal sealed class VirtualOutputController : Window
         var slotWidth = (adjustedWidth - (SlotCount - 1) * style.ItemSpacing.X) / SlotCount;
         var slotHeight = DeckRowHeight;
         
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 8f);  // More modern rounded corners
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 8f);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(internalPadding, internalPadding));
         ImGui.BeginChild("DeckRow", new Vector2(totalWidth, slotHeight + internalPadding * 2), true);
         {
+            // Ensure content starts after the padding
+            ImGui.SetCursorPos(new Vector2(internalPadding, internalPadding));
+            
             for (int i = 0; i < SlotCount; i++)
             {
                 if (i > 0) ImGui.SameLine();
@@ -231,16 +234,16 @@ internal sealed class VirtualOutputController : Window
         // Draw slot content
         if (slot.IsEmpty)
         {
-            // Empty slot: Draw "+" icon (vertically centered)
+            // Empty slot: Draw "+" icon (centered)
             var iconSize = ImGui.CalcTextSize("+");
-            var iconPos = slotMin + new Vector2((width - iconSize.X) / 2, (height - iconSize.Y) / 2 - 8);
+            var iconPos = slotMin + new Vector2((width - iconSize.X) / 2, (height - iconSize.Y) / 2 - 12);
             drawList.AddText(iconPos, isHovered ? UiColors.ForegroundFull : UiColors.TextMuted, "+");
             
-            // Hint text
+            // Hint text (at bottom)
             var hintText = "Add Operator";
             var hintSize = ImGui.CalcTextSize(hintText);
-            var hintPos = slotMin + new Vector2((width - hintSize.X) / 2, height - hintSize.Y - 12);
-            drawList.AddText(Fonts.FontSmall, Fonts.FontSmall.FontSize, hintPos, UiColors.TextMuted.Fade(0.5f), hintText);
+            var hintPos = slotMin + new Vector2((width - hintSize.X) / 2, height - hintSize.Y - 18);
+            drawList.AddText(Fonts.FontSmall, Fonts.FontSmall.FontSize, hintPos, UiColors.TextMuted.Fade(0.4f), hintText);
         }
         else
         {
@@ -251,7 +254,7 @@ internal sealed class VirtualOutputController : Window
         // Selection border
         if (isSelected)
         {
-            drawList.AddRect(slotMin, slotMax, UiColors.StatusAutomated, 8f, ImDrawFlags.None, 3f);
+            drawList.AddRect(slotMin, slotMax, UiColors.StatusAutomated, 8f, ImDrawFlags.None, 4f);
         }
         else if (isHovered)
         {
@@ -293,6 +296,9 @@ internal sealed class VirtualOutputController : Window
         
         // Try to render live texture preview
         var hasPreview = false;
+        var footerHeight = 24f;
+        var topMargin = 8f;
+        
         if (instance != null && instance.Outputs.Count > 0)
         {
             var firstOutput = instance.Outputs[0];
@@ -305,26 +311,25 @@ internal sealed class VirtualOutputController : Window
                 {
                     hasPreview = true;
                     
-                    // Calculate preview area (fill slot with aspect ratio preservation)
+                    var interiorMargin = 14f; 
+                    var nameLabelHeight = 28f;
+                    
+                    var maxPreviewWidth = width - interiorMargin * 2;
+                    var maxPreviewHeight = height - interiorMargin - nameLabelHeight;
+                    
                     var textureAspect = (float)texture.Description.Width / texture.Description.Height;
-                    var slotAspect = width / (height - 24);  // Leave room for name at bottom
+                    var previewWidth = maxPreviewWidth;
+                    var previewHeight = previewWidth / textureAspect;
                     
-                    var previewWidth = width - 8;  // Padding
-                    var previewHeight = height - 32;  // Room for name
-                    
-                    if (textureAspect > slotAspect)
+                    if (previewHeight > maxPreviewHeight)
                     {
-                        // Texture is wider, fit to width
-                        previewHeight = previewWidth / textureAspect;
-                    }
-                    else
-                    {
-                        // Texture is taller, fit to height
+                        previewHeight = maxPreviewHeight;
                         previewWidth = previewHeight * textureAspect;
                     }
                     
+                    // Center the preview within the available area above the name
                     var previewX = slotMin.X + (width - previewWidth) / 2;
-                    var previewY = slotMin.Y + 8;  // Top padding
+                    var previewY = slotMin.Y + interiorMargin + (maxPreviewHeight - previewHeight) / 2;
                     
                     var pMin = new Vector2(previewX, previewY);
                     var pMax = pMin + new Vector2(previewWidth, previewHeight);
@@ -332,10 +337,10 @@ internal sealed class VirtualOutputController : Window
                     // Draw the texture preview
                     drawList.AddImage((IntPtr)previewSrv, pMin, pMax);
                     
-                    // Selection highlight border on preview
+                    // Selection highlight border on preview (subtle)
                     if (isSelected)
                     {
-                        drawList.AddRect(pMin, pMax, UiColors.StatusAutomated.Fade(0.5f), 4f);
+                        drawList.AddRect(pMin, pMax, UiColors.StatusAutomated.Fade(0.3f), 4f, ImDrawFlags.None, 1f);
                     }
                 }
             }
