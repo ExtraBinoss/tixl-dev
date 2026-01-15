@@ -71,7 +71,8 @@ internal sealed class VirtualOutputController : Window
         var windowSize = ImGui.GetContentRegionAvail();
         var style = ImGui.GetStyle();
         
-        // Add subtle left padding for modern look (matching bottom panels)
+        // Add vertical padding for "Apple-like" breathing room
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + ContentPadding);
         ImGui.SetCursorPosX(ImGui.GetCursorPosX() + ContentPadding);
         
         // ============================================
@@ -194,7 +195,7 @@ internal sealed class VirtualOutputController : Window
         // Background color based on state
         var bgColor = slot.IsEmpty 
             ? UiColors.BackgroundFull.Fade(0.3f) 
-            : (isSelected ? UiColors.BackgroundActive : UiColors.BackgroundFull.Fade(0.6f));
+            : (isSelected ? UiColors.StatusAutomated.Fade(0.4f) : UiColors.BackgroundFull.Fade(0.6f));
         
         drawList.AddRectFilled(slotMin, slotMax, bgColor, 8f);
         
@@ -250,11 +251,11 @@ internal sealed class VirtualOutputController : Window
         // Selection border
         if (isSelected)
         {
-            drawList.AddRect(slotMin, slotMax, UiColors.StatusAnimated, 8f, ImDrawFlags.None, 2f);
+            drawList.AddRect(slotMin, slotMax, UiColors.StatusAutomated, 8f, ImDrawFlags.None, 3f);
         }
         else if (isHovered)
         {
-            drawList.AddRect(slotMin, slotMax, UiColors.ForegroundFull.Fade(0.3f), 8f);
+            drawList.AddRect(slotMin, slotMax, UiColors.StatusAutomated.Fade(0.3f), 8f, ImDrawFlags.None, 2f);
         }
         
         // Context menu
@@ -334,7 +335,7 @@ internal sealed class VirtualOutputController : Window
                     // Selection highlight border on preview
                     if (isSelected)
                     {
-                        drawList.AddRect(pMin, pMax, UiColors.StatusAnimated.Fade(0.5f), 4f);
+                        drawList.AddRect(pMin, pMax, UiColors.StatusAutomated.Fade(0.5f), 4f);
                     }
                 }
             }

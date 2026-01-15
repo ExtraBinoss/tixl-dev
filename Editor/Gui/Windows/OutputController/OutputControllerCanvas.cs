@@ -120,6 +120,10 @@ internal sealed class OutputControllerCanvas : ScalableCanvas
                 }
 
                 _hoveringVariation.KeepCurrentAndApplyNewValues(structure);
+                
+                // Draw hover rect
+                var hoverRect = GetScreenRectForCell(_hoveringVariation.GridCell);
+                drawList.AddRect(hoverRect.Min, hoverRect.Max, UiColors.StatusAutomated.Fade(0.3f), 0f, ImDrawFlags.None, 2f);
             }
         }
         else
@@ -131,7 +135,7 @@ internal sealed class OutputControllerCanvas : ScalableCanvas
         if (_selectedVariation != null)
         {
             var selectedRect = GetScreenRectForCell(_selectedVariation.GridCell);
-            drawList.AddRect(selectedRect.Min, selectedRect.Max, UiColors.StatusAnimated, 0f, ImDrawFlags.None, 3f);
+            drawList.AddRect(selectedRect.Min, selectedRect.Max, UiColors.StatusAutomated, 0f, ImDrawFlags.None, 4f);
         }
     }
 
@@ -145,8 +149,8 @@ internal sealed class OutputControllerCanvas : ScalableCanvas
 
     public void ResetView()
     {
-        // Smaller default zoom for better GPU performance
-        var extend = new Vector2(7, 7);  // Larger extend = more zoomed out = fewer tiles rendered
+        // Larger initial zoom to see fewer variations from the start
+        var extend = new Vector2(3, 3);  
         var center = new Vector2(GridCell.VariationGridSize / 2f, GridCell.VariationGridSize / 2f);
         var left = (center - extend) * _thumbnailSize;
         var right = (center + extend) * _thumbnailSize;
