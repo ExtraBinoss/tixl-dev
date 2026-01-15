@@ -1,3 +1,4 @@
+#nullable enable
 using ImGuiNET;
 using T3.Core.DataTypes.Vector;
 using T3.Editor.Gui.Styling;
@@ -12,14 +13,20 @@ using T3.Editor.Gui.Windows.Exploration;
 using T3.Editor.UiModel.ProjectHandling;
 using T3.Editor.UiModel.Selection;
 using T3.Core.Operator.Slots;
+using T3.Editor.Gui.Input;
+using T3.Editor.UiModel.Commands;
+using T3.Editor.UiModel.Commands.Graph;
 
 namespace T3.Editor.Gui.Windows.OutputController;
 
+/// <summary>
+/// A Resolume-style virtual output controller for managing operator variations.
+/// </summary>
 internal sealed class VirtualOutputController : Window
 {
     public VirtualOutputController()
     {
-        Config.Title = "Virtual Output Controller";
+        Config.Title = "Mixer";
         Config.Visible = true;
         _variationCanvas = new OutputControllerCanvas(this);
     }
@@ -27,140 +34,338 @@ internal sealed class VirtualOutputController : Window
     private class ControllerSlot
     {
         public bool IsEmpty = true;
-        public string Name = "Empty";
+        public string Name = "";
         public Guid SymbolChildId;
         public List<ExplorationVariation.VariationParameter> Parameters = new();
+        public Instance? LinkedInstance;
     }
 
-    private readonly ControllerSlot[] _slots = new ControllerSlot[12];
+    private const int SlotCount = 8;
+    private const float DeckRowHeight = 100f;
+    private const float DashboardWidth = 350f;
+    
+    private readonly ControllerSlot[] _slots = new ControllerSlot[SlotCount];
     private int _selectedSlotIndex = -1;
     private readonly OutputControllerCanvas _variationCanvas;
     internal List<ExplorationVariation.VariationParameter> VariationParameters = new();
     public IOutputUi OutputUi { get; set; }
     
-    // For handling drag of scatter strength - copied from ExplorationWindow
-    private static float _strengthBeforeDrag = 0;
+    private string _nodeFilter = "";
+    private int _pendingNodePickerSlot = -1;
 
     protected override void DrawContent()
     {
-        // Draw Grid of Slots (Decks) - Horizontal Layout
-        ImGui.BeginChild("Slots", new Vector2(-1, 80), true); // Fixed height for slots row
+        var windowSize = ImGui.GetContentRegionAvail();
+        
+        // ============================================
+        // TOP: DECK ROW (Horizontal slots like Resolume)
+        // ============================================
+        DrawDeckRow(windowSize.X);
+        
+        ImGui.Spacing();
+        
+        // ============================================
+        // BOTTOM: Dashboard + Variation Canvas
+        // ============================================
+        var remainingHeight = ImGui.GetContentRegionAvail().Y;
+        
+        // Left: Dashboard Panel
+        ImGui.BeginChild("Dashboard", new Vector2(DashboardWidth, remainingHeight), true);
         {
-            var contentRegion = ImGui.GetContentRegionAvail();
-            var columns = 12; // Horizontal row
-            var itemWidth = (contentRegion.X - (columns - 1) * ImGui.GetStyle().ItemSpacing.X) / columns;
-            var itemHeight = contentRegion.Y;
-
-            for (int i = 0; i < 12; i++)
-            {
-                if (i > 0) ImGui.SameLine();
-                
-                var slot = _slots[i] ??= new ControllerSlot();
-                var isSelected = _selectedSlotIndex == i;
-
-                ImGui.PushID(i);
-                
-                // Button labeling
-                var label = slot.IsEmpty ? "+" : slot.Name;
-                if (!slot.IsEmpty)
-                {
-                    // Shorten name if too long for the button
-                    // label = ...
-                }
-
-                if (ImGui.Button(label, new Vector2(itemWidth, itemHeight)))
-                {
-                    _selectedSlotIndex = i;
-                    if (slot.IsEmpty)
-                    {
-                         // If we have selection, assign.
-                         var selection = ProjectView.Focused?.NodeSelection;
-                         if (selection != null && selection.Selection.Count > 0)
-                         {
-                             AssignSelectionToSlot(i);
-                         }
-                         else
-                         {
-                             // Open Node Picker
-                             ImGui.OpenPopup("NodePicker");
-                             _nodeFilter = "";
-                         }
-                    }
-                    else
-                    {
-                        LoadSlot(i);
-                    }
-                }
-                
-                // Node Picker Popup
-                if (ImGui.BeginPopup("NodePicker"))
-                {
-                    DrawNodePicker(i);
-                    ImGui.EndPopup();
-                }
-                
-                if (ImGui.IsItemHovered() && !slot.IsEmpty && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
-                {
-                     // Double click could maybe center/fit the canvas?
-                }
-                
-                // Context menu
-                if (ImGui.BeginPopupContextItem())
-                {
-                    if (ImGui.MenuItem("Assign Selected Operator"))
-                    {
-                        AssignSelectionToSlot(i);
-                    }
-                    if (ImGui.MenuItem("Clear Slot"))
-                    {
-                        ClearSlot(i);
-                    }
-                    ImGui.EndPopup();
-                }
-
-                // Selection indicator
-                if (isSelected)
-                {
-                    var min = ImGui.GetItemRectMin();
-                    var max = ImGui.GetItemRectMax();
-                    ImGui.GetWindowDrawList().AddRect(min, max, UiColors.StatusAnimated, 2f, ImDrawFlags.None, 2f);
-                }
-                ImGui.PopID();
-            }
-        }
-        ImGui.EndChild();
-
-        // Bottom Section: Parameters + Canvas
-        // Left: Parameters
-        ImGui.BeginChild("Parameters", new Vector2(300, -1), true); // Dashboard width
-        {
-            if (_selectedSlotIndex != -1 && !_slots[_selectedSlotIndex].IsEmpty)
-            {
-                ImGui.TextUnformatted($"Dashboard: {_slots[_selectedSlotIndex].Name}");
-                ImGui.Separator();
-                ImGui.Spacing();
-                DrawParameters();
-            }
-            else
-            {
-                ImGui.TextUnformatted("Select a slot.");
-            }
+            DrawDashboard();
         }
         ImGui.EndChild();
         
         ImGui.SameLine();
         
-        // Right: Variation Canvas
-        ImGui.BeginChild("Canvas", new Vector2(-1, -1), false, ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoScrollbar);
+        // Right: Variation Canvas (Mixer Grid)
+        ImGui.BeginChild("MixerCanvas", new Vector2(-1, remainingHeight), true, 
+            ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoScrollbar);
         {
-            if (_selectedSlotIndex != -1 && !_slots[_selectedSlotIndex].IsEmpty)
+            DrawMixerCanvas();
+        }
+        ImGui.EndChild();
+    }
+
+    private void DrawDeckRow(float totalWidth)
+    {
+        var style = ImGui.GetStyle();
+        var slotWidth = (totalWidth - (SlotCount - 1) * style.ItemSpacing.X - style.WindowPadding.X * 2) / SlotCount;
+        var slotHeight = DeckRowHeight;
+        
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 4f);
+        ImGui.BeginChild("DeckRow", new Vector2(-1, slotHeight + style.WindowPadding.Y * 2), true);
+        {
+            for (int i = 0; i < SlotCount; i++)
             {
-                _variationCanvas.Draw(ProjectView.Focused?.Structure);
+                if (i > 0) ImGui.SameLine();
+                DrawSlot(i, slotWidth, slotHeight);
+            }
+        }
+        ImGui.EndChild();
+        ImGui.PopStyleVar();
+    }
+
+    private void DrawSlot(int index, float width, float height)
+    {
+        var slot = _slots[index] ??= new ControllerSlot();
+        var isSelected = _selectedSlotIndex == index;
+        var drawList = ImGui.GetWindowDrawList();
+        
+        ImGui.PushID(index);
+        
+        // Slot background
+        var cursorPos = ImGui.GetCursorScreenPos();
+        var slotMin = cursorPos;
+        var slotMax = cursorPos + new Vector2(width, height);
+        
+        // Background color based on state
+        var bgColor = slot.IsEmpty 
+            ? UiColors.BackgroundFull.Fade(0.3f) 
+            : (isSelected ? UiColors.BackgroundActive : UiColors.BackgroundFull.Fade(0.6f));
+        
+        drawList.AddRectFilled(slotMin, slotMax, bgColor, 6f);
+        
+        // Interactive area
+        ImGui.InvisibleButton($"##slot_{index}", new Vector2(width, height));
+        
+        var isHovered = ImGui.IsItemHovered();
+        var wasClicked = ImGui.IsItemClicked(ImGuiMouseButton.Left);
+        
+        if (wasClicked)
+        {
+            _selectedSlotIndex = index;
+            if (slot.IsEmpty)
+            {
+                var selection = ProjectView.Focused?.NodeSelection;
+                if (selection != null && selection.Selection.Count > 0)
+                {
+                    AssignSelectionToSlot(index);
+                }
+                else
+                {
+                    _pendingNodePickerSlot = index;
+                    ImGui.OpenPopup("NodePickerPopup");
+                    _nodeFilter = "";
+                }
+            }
+            else
+            {
+                LoadSlot(index);
+            }
+        }
+        
+        // Draw slot content
+        if (slot.IsEmpty)
+        {
+            // Empty slot: Draw "+" icon
+            var iconSize = ImGui.CalcTextSize("+");
+            var iconPos = slotMin + new Vector2((width - iconSize.X) / 2, (height - iconSize.Y) / 2);
+            drawList.AddText(iconPos, isHovered ? UiColors.ForegroundFull : UiColors.TextMuted, "+");
+            
+            // Hint text
+            var hintText = "Add Node";
+            var hintSize = ImGui.CalcTextSize(hintText);
+            var hintPos = slotMin + new Vector2((width - hintSize.X) / 2, height - hintSize.Y - 8);
+            drawList.AddText(Fonts.FontSmall, Fonts.FontSmall.FontSize, hintPos, UiColors.TextMuted.Fade(0.5f), hintText);
+        }
+        else
+        {
+            // Filled slot: Show operator name and param count
+            DrawFilledSlotContent(slot, slotMin, width, height, isSelected);
+        }
+        
+        // Selection border
+        if (isSelected)
+        {
+            drawList.AddRect(slotMin, slotMax, UiColors.StatusAnimated, 6f, ImDrawFlags.None, 2f);
+        }
+        else if (isHovered)
+        {
+            drawList.AddRect(slotMin, slotMax, UiColors.ForegroundFull.Fade(0.3f), 6f);
+        }
+        
+        // Context menu
+        if (ImGui.BeginPopupContextItem())
+        {
+            if (ImGui.MenuItem("Assign Selected Operator", slot.IsEmpty || !slot.IsEmpty))
+            {
+                AssignSelectionToSlot(index);
+            }
+            if (!slot.IsEmpty && ImGui.MenuItem("Clear Slot"))
+            {
+                ClearSlot(index);
+            }
+            ImGui.EndPopup();
+        }
+        
+        ImGui.PopID();
+        
+        // Node Picker Popup (shared)
+        if (_pendingNodePickerSlot == index && ImGui.BeginPopup("NodePickerPopup"))
+        {
+            DrawNodePicker(index);
+            ImGui.EndPopup();
+        }
+    }
+
+    private void DrawFilledSlotContent(ControllerSlot slot, Vector2 slotMin, float width, float height, bool isSelected)
+    {
+        var drawList = ImGui.GetWindowDrawList();
+        
+        // Slot number indicator
+        var slotNumber = $"{Array.IndexOf(_slots, slot) + 1}";
+        drawList.AddText(slotMin + new Vector2(8, 6), UiColors.TextMuted, slotNumber);
+        
+        // Operator name (centered, bold)
+        ImGui.PushFont(Fonts.FontBold);
+        var nameText = slot.Name.Length > 12 ? slot.Name[..10] + "…" : slot.Name;
+        var nameSize = ImGui.CalcTextSize(nameText);
+        var namePos = slotMin + new Vector2((width - nameSize.X) / 2, 25);
+        drawList.AddText(Fonts.FontBold, Fonts.FontBold.FontSize, namePos, 
+            isSelected ? UiColors.ForegroundFull : UiColors.Text, nameText);
+        ImGui.PopFont();
+        
+        // Parameter count
+        var paramCount = $"{slot.Parameters.Count} params";
+        var paramSize = ImGui.CalcTextSize(paramCount);
+        var paramPos = slotMin + new Vector2((width - paramSize.X) / 2, height - 20);
+        drawList.AddText(Fonts.FontSmall, Fonts.FontSmall.FontSize, paramPos, UiColors.TextMuted, paramCount);
+    }
+
+    private void DrawDashboard()
+    {
+        if (_selectedSlotIndex == -1 || _slots[_selectedSlotIndex] == null || _slots[_selectedSlotIndex].IsEmpty)
+        {
+            // Empty state
+            var center = ImGui.GetContentRegionAvail() / 2;
+            ImGui.SetCursorPos(center - new Vector2(0, 40));
+            CustomComponents.EmptyWindowMessage(
+                "Select a deck slot above\nto control its parameters.\n\nClick + to add an operator,\nor select one in the graph first.");
+            return;
+        }
+
+        var slot = _slots[_selectedSlotIndex];
+        var instance = slot.LinkedInstance;
+        
+        if (instance == null)
+        {
+            CustomComponents.EmptyWindowMessage("Instance not found.\nTry reassigning the operator.");
+            return;
+        }
+        
+        // Header
+        ImGui.PushFont(Fonts.FontLarge);
+        ImGui.TextUnformatted(slot.Name);
+        ImGui.PopFont();
+        
+        ImGui.SameLine();
+        CustomComponents.RightAlign(60);
+        if (ImGui.SmallButton("Clear"))
+        {
+            ClearSlot(_selectedSlotIndex);
+            return;
+        }
+        
+        CustomComponents.SeparatorLine();
+        
+        // Scatter control (global for this slot)
+        CustomComponents.SmallGroupHeader("VARIATION SCATTER");
+        ImGui.SetNextItemWidth(-1);
+        ImGui.SliderFloat("##Scatter", ref _variationCanvas.Scatter, 0, 100, "%.1f");
+        CustomComponents.HelpText("Controls how much parameter values vary across the grid.");
+        
+        ImGui.Spacing();
+        CustomComponents.SeparatorLine();
+        
+        // Parameters - Use the same component as ParameterWindow
+        CustomComponents.SmallGroupHeader("PARAMETERS");
+        
+        ImGui.BeginChild("ParameterList", new Vector2(-1, -1));
+        {
+            var symbolUi = instance.GetSymbolUi();
+            var symbolChildUi = instance.GetChildUi();
+            var compositionSymbolUi = instance.Parent?.GetSymbolUi();
+            
+            if (symbolUi != null && symbolChildUi != null && compositionSymbolUi != null)
+            {
+                ParameterWindow.DrawParameters(instance, symbolUi, symbolChildUi, compositionSymbolUi, false);
+            }
+            else
+            {
+                ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
+                ImGui.TextWrapped("Could not load parameters.");
+                ImGui.PopStyleColor();
             }
         }
         ImGui.EndChild();
     }
-    
+
+    private void DrawMixerCanvas()
+    {
+        if (_selectedSlotIndex == -1 || _slots[_selectedSlotIndex] == null || _slots[_selectedSlotIndex].IsEmpty)
+        {
+            CustomComponents.EmptyWindowMessage(
+                "Variation Mixer\n\nSelect a deck with an assigned operator\nto explore parameter variations.\n\nHover over cells to preview,\nclick to apply permanently.");
+            return;
+        }
+
+        _variationCanvas.Draw(ProjectView.Focused?.Structure);
+    }
+
+    private void DrawNodePicker(int slotIndex)
+    {
+        ImGui.TextUnformatted("Select Operator");
+        ImGui.Separator();
+        
+        ImGui.SetNextItemWidth(280);
+        CustomComponents.DrawInputFieldWithPlaceholder("Search nodes...", ref _nodeFilter, 280);
+        
+        ImGui.Spacing();
+        
+        var compositionOp = ProjectView.Focused?.CompositionInstance;
+        if (compositionOp == null) 
+        {
+            ImGui.TextColored(UiColors.StatusError.Rgba, "No composition open");
+            return;
+        }
+
+        ImGui.BeginChild("NodeList", new Vector2(280, 300));
+        {
+            foreach (var child in compositionOp.Children.Values)
+            {
+                var name = child.SymbolChild.ReadableName;
+                var symbolName = child.Symbol.Name;
+                
+                // Filter
+                if (!string.IsNullOrEmpty(_nodeFilter))
+                {
+                    if (!name.Contains(_nodeFilter, StringComparison.InvariantCultureIgnoreCase) &&
+                        !symbolName.Contains(_nodeFilter, StringComparison.InvariantCultureIgnoreCase))
+                        continue;
+                }
+
+                ImGui.PushID(child.SymbolChildId.GetHashCode());
+                
+                if (ImGui.Selectable(name))
+                {
+                    AssignInstanceToSlot(slotIndex, child);
+                    _pendingNodePickerSlot = -1;
+                    ImGui.CloseCurrentPopup();
+                }
+                
+                // Show symbol type as hint
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip($"Type: {symbolName}");
+                }
+                
+                ImGui.PopID();
+            }
+        }
+        ImGui.EndChild();
+    }
+
     private void AssignSelectionToSlot(int index)
     {
         var nodeSelection = ProjectView.Focused?.NodeSelection;
@@ -170,55 +375,56 @@ internal sealed class VirtualOutputController : Window
         var symbolChildUi = nodeSelection.GetSelectedChildUis().FirstOrDefault();
         if (symbolChildUi == null) return;
         
+        var selectedInstance = nodeSelection.GetSelectedInstances().FirstOrDefault();
+        if (selectedInstance == null) return;
+        
         var slot = _slots[index];
         slot.IsEmpty = false;
         slot.Name = symbolChildUi.SymbolChild.ReadableName;
         slot.SymbolChildId = symbolChildUi.Id;
+        slot.LinkedInstance = selectedInstance;
         slot.Parameters.Clear();
         
-        // Add all vector/float inputs as parameters by default? 
-        // Or maybe just keep it empty effectively letting user add parameters like in ExplorationWindow?
-        // For now, let's copy the logic from ExplorationWindow to populate parameters based on selection
-        // But since we are "assigning" to a deck, we probably want to snapshot which parameters were selected at that time.
+        PopulateParametersFromInstance(slot, symbolChildUi, selectedInstance);
         
-        // Actually, better approach: The slot stores the list of parameters.
-        // When we load the slot, we populate VariationParameters list which the canvas uses.
+        _selectedSlotIndex = index;
+        LoadSlot(index);
+    }
+    
+    private void AssignInstanceToSlot(int index, Instance instance)
+    {
+        var slot = _slots[index];
+        slot.IsEmpty = false;
+        slot.Name = instance.SymbolChild.ReadableName;
+        slot.SymbolChildId = instance.SymbolChildId;
+        slot.LinkedInstance = instance;
+        slot.Parameters.Clear();
         
-        // Let's iterate inputs and add them if they are in the selection? 
-        // Or if we require specific inputs to be selected...
-        // For the "Click and start using" feel, maybe we should auto-add some/all?
+        PopulateParameters(slot, instance);
         
-        // Replicating ExplorationWindow selection logic:
-        var selectedSymbolUiChilds = nodeSelection.GetSelectedChildUis();
-        // Since we picked the first one for the name, let's assume we focus on that one instance mostly
-        // But Exploration supports multi-selection.
-        
-        // For simplicity in this first version, we stick to the first selected operator.
-        
-        var instance = ProjectView.Focused?.Structure.GetInstanceFromIdPath(new [] { symbolChildUi.Id }); // Simplified path lookup, likely incorrect for deep nesting
-        // Correct way is getting instance from NodeSelection if possible
-        var selectedInstance = nodeSelection.GetSelectedInstances().FirstOrDefault();
-        
-        if (selectedInstance == null) return;
-        
+        _selectedSlotIndex = index;
+        LoadSlot(index);
+    }
+
+    private void PopulateParametersFromInstance(ControllerSlot slot, SymbolUi.Child symbolChildUi, Instance instance)
+    {
         foreach (var input in symbolChildUi.SymbolChild.Inputs.Values)
         {
-             var inputUi = symbolChildUi.SymbolChild.Symbol.GetSymbolUi().InputUis[input.Id];
-             
-             // Check valid types
-             if (input.DefaultValue.ValueType == typeof(float) ||
-                 input.DefaultValue.ValueType == typeof(Vector2) ||
-                 input.DefaultValue.ValueType == typeof(Vector4) ||
-                 input.DefaultValue.ValueType == typeof(System.Numerics.Vector3))
-             {
-                 var inputSlot = selectedInstance.Inputs.Single(i => i.Id == input.Id);
-                 
-                 float scale = 1f;
-                 float min = float.NegativeInfinity;
-                 float max = float.PositiveInfinity;
-                 bool clampMin = false;
-                 bool clampMax = false;
-                 
+            var inputUi = symbolChildUi.SymbolChild.Symbol.GetSymbolUi().InputUis[input.Id];
+            
+            if (input.DefaultValue.ValueType == typeof(float) ||
+                input.DefaultValue.ValueType == typeof(Vector2) ||
+                input.DefaultValue.ValueType == typeof(Vector4) ||
+                input.DefaultValue.ValueType == typeof(System.Numerics.Vector3))
+            {
+                var inputSlot = instance.Inputs.Single(i => i.Id == input.Id);
+                
+                float scale = 1f;
+                float min = float.NegativeInfinity;
+                float max = float.PositiveInfinity;
+                bool clampMin = false;
+                bool clampMax = false;
+                
                 switch (inputUi)
                 {
                     case FloatInputUi floatInputUi:
@@ -242,16 +448,16 @@ internal sealed class VirtualOutputController : Window
                         clampMin = float3InputUi.ClampMin;
                         clampMax = float3InputUi.ClampMax;
                         break;
-                     case Vector4InputUi float4InputUi:
+                    case Vector4InputUi:
                         scale = 0.02f;
                         break;
                 }
-                 
-                 slot.Parameters.Add(new ExplorationVariation.VariationParameter()
-                 {
+                
+                slot.Parameters.Add(new ExplorationVariation.VariationParameter
+                {
                     TargetChild = symbolChildUi,
                     Input = input,
-                    InstanceIdPath = selectedInstance.InstancePath, // This might be brittle if hierarchy changes
+                    InstanceIdPath = instance.InstancePath,
                     Type = input.DefaultValue.ValueType,
                     InputSlot = inputSlot,
                     ParameterScale = scale,
@@ -259,90 +465,32 @@ internal sealed class VirtualOutputController : Window
                     ParameterMax = max,
                     ParameterClampMin = clampMin,
                     ParameterClampMax = clampMax
-                 });
-             }
-        }
-        
-        _selectedSlotIndex = index;
-        LoadSlot(index);
-    }
-    
-    private void DrawNodePicker(int slotIndex)
-    {
-        ImGui.SetNextItemWidth(-1);
-        ImGui.InputText("Search", ref _nodeFilter, 255);
-        
-        var structure = ProjectView.Focused?.Structure;
-        if (structure == null) return;
-        
-        var compositionId = ProjectView.Focused.NodeSelection.GetSelectionSymbolChildId(); // Current composition? 
-        // Actually we want children of the current composition.
-        // ProjectView.Focused.CompositionId is likely what we want if available.
-        // Let's use `structure.Instances` or similar if accessible, or traverse from a root.
-        
-        // Better way: Get the Composition Instance shown in the graph.
-        var compositionOp = ProjectView.Focused?.CompositionInstance;
-        if (compositionOp == null) 
-        {
-             ImGui.TextUnformatted("No composition found");
-             return;
-        }
-
-        ImGui.BeginChild("NodeList", new Vector2(300, 200));
-        
-        // We need to iterate the children of the current composition
-        foreach(var child in compositionOp.Children.Values)
-        {
-            // Filter
-            if (!string.IsNullOrEmpty(_nodeFilter) && !child.Symbol.Name.Contains(_nodeFilter, StringComparison.InvariantCultureIgnoreCase) && !child.SymbolChild.ReadableName.Contains(_nodeFilter, StringComparison.InvariantCultureIgnoreCase))
-                continue;
-
-            if (ImGui.Selectable(child.SymbolChild.ReadableName))
-            {
-                AssignInstanceToSlot(slotIndex, child);
-                ImGui.CloseCurrentPopup();
+                });
             }
         }
-        ImGui.EndChild();
-    }
-    
-    private void AssignInstanceToSlot(int index, Instance instance)
-    {
-         var slot = _slots[index];
-         slot.IsEmpty = false;
-         slot.Name = instance.SymbolChild.ReadableName;
-         slot.SymbolChildId = instance.SymbolChildId;
-         slot.Parameters.Clear();
-         
-         // Logic to Populate Parameters from Instance
-         PopulateParameters(slot, instance);
-         
-         _selectedSlotIndex = index;
-         LoadSlot(index);
     }
     
     private void PopulateParameters(ControllerSlot slot, Instance instance)
     {
-         foreach (var input in instance.SymbolChild.Inputs.Values)
-         {
-             var inputUi = instance.Symbol.GetSymbolUi().InputUis[input.Id];
-             
-             if (input.DefaultValue.ValueType == typeof(float) ||
-                 input.DefaultValue.ValueType == typeof(Vector2) ||
-                 input.DefaultValue.ValueType == typeof(Vector4) ||
-                 input.DefaultValue.ValueType == typeof(System.Numerics.Vector3))
-             {
-                 var inputSlot = instance.Inputs.Single(i => i.Id == input.Id);
-                 
-                  float scale = 1f;
-                  float min = float.NegativeInfinity;
-                  float max = float.PositiveInfinity;
-                  bool clampMin = false;
-                  bool clampMax = false;
-                  
-                  // Extract UI properties
-                 switch (inputUi)
-                 {
+        foreach (var input in instance.SymbolChild.Inputs.Values)
+        {
+            var inputUi = instance.Symbol.GetSymbolUi().InputUis[input.Id];
+            
+            if (input.DefaultValue.ValueType == typeof(float) ||
+                input.DefaultValue.ValueType == typeof(Vector2) ||
+                input.DefaultValue.ValueType == typeof(Vector4) ||
+                input.DefaultValue.ValueType == typeof(System.Numerics.Vector3))
+            {
+                var inputSlot = instance.Inputs.Single(i => i.Id == input.Id);
+                
+                float scale = 1f;
+                float min = float.NegativeInfinity;
+                float max = float.PositiveInfinity;
+                bool clampMin = false;
+                bool clampMax = false;
+                
+                switch (inputUi)
+                {
                     case FloatInputUi floatInputUi:
                         scale = floatInputUi.Scale;
                         min = floatInputUi.Min;
@@ -364,13 +512,13 @@ internal sealed class VirtualOutputController : Window
                         clampMin = float3InputUi.ClampMin;
                         clampMax = float3InputUi.ClampMax;
                         break;
-                     case Vector4InputUi float4InputUi:
+                    case Vector4InputUi:
                         scale = 0.02f;
                         break;
-                 }
-                 
-                 slot.Parameters.Add(new ExplorationVariation.VariationParameter()
-                 {
+                }
+                
+                slot.Parameters.Add(new ExplorationVariation.VariationParameter
+                {
                     TargetChild = instance.Parent.Symbol.GetSymbolUi().ChildUis[instance.SymbolChildId],
                     Input = input,
                     InstanceIdPath = instance.InstancePath,
@@ -381,24 +529,25 @@ internal sealed class VirtualOutputController : Window
                     ParameterMax = max,
                     ParameterClampMin = clampMin,
                     ParameterClampMax = clampMax
-                 });
-             }
-         }
+                });
+            }
+        }
     }
     
     private void ClearSlot(int index)
     {
-                var slot = _slots[index];
-                slot.IsEmpty = true;
-                slot.Name = "Empty";
-                slot.Parameters.Clear();
-                slot.SymbolChildId = Guid.Empty;
-                
-                if (_selectedSlotIndex == index)
-                {
-                    VariationParameters.Clear();
-                    _variationCanvas.ClearVariations();
-                }
+        var slot = _slots[index];
+        slot.IsEmpty = true;
+        slot.Name = "";
+        slot.Parameters.Clear();
+        slot.SymbolChildId = Guid.Empty;
+        slot.LinkedInstance = null;
+        
+        if (_selectedSlotIndex == index)
+        {
+            VariationParameters.Clear();
+            _variationCanvas.ClearVariations();
+        }
     }
     
     private void LoadSlot(int index)
@@ -406,106 +555,6 @@ internal sealed class VirtualOutputController : Window
         VariationParameters.Clear();
         VariationParameters.AddRange(_slots[index].Parameters);
         _variationCanvas.ClearVariations();
-    }
-
-    private string _nodeFilter = "";
-    
-    private void DrawParameters()
-    {
-         ImGui.DragFloat("Scatter", ref _variationCanvas.Scatter, 0.1f, 0, 100);
-         ImGui.Spacing();
-         
-         // Simplified parameter list
-         if (VariationParameters.Count == 0)
-         {
-             ImGui.TextUnformatted("No parameters.");
-             return;
-         }
-
-        var nodeSelection = ProjectView.Focused?.NodeSelection;
-
-         // Group by Symbol Child like in ExplorationWindow
-         // Since we copied the params, let's just iterate them.
-         // Note: Logic to remove params if not selected is removed here because we "saved" the params to the deck.
-         // However, we still need to allow toggling/adjusting scatter strength.
-         
-         foreach (var param in VariationParameters)
-         {
-             ImGui.PushID(param.Input.Id.GetHashCode());
-             
-             // Strength control
-             var keep = ImGui.GetCursorPos();
-             var formattedStrength = $"×{param.ScatterStrength:F1}";
-             var size = ImGui.CalcTextSize(formattedStrength);
-             ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X- size.X - 5);
-             ImGui.TextUnformatted(formattedStrength);
-             ImGui.SetCursorPos(keep);
-             ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X- 50);
-             ImGui.InvisibleButton("ScatterStrengthFactor", new Vector2(50, ImGui.GetTextLineHeight()));
-             
-             if (ImGui.IsItemActivated())
-             {
-                 _strengthBeforeDrag = param.ScatterStrength;
-             }
-             if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
-             {
-                 param.ScatterStrength = (_strengthBeforeDrag + ImGui.GetMouseDragDelta().X * 0.02f).Clamp(0, 100f);
-             }
-             if (ImGui.IsItemDeactivated())
-             {
-                 _variationCanvas.ClearVariations();
-             }
-
-             ImGui.SameLine();
-             
-             // Checkbox to toggle inclusion? 
-             // For now just list name
-             // ImGui.TextUnformatted($"{param.TargetChild.SymbolChild.ReadableName}.{param.Input.Name}");
-             
-             // Draw actual parameter control and scatter control side-by-side
-             ImGui.PushItemWidth(120);
-             if (param.Type == typeof(float))
-             {
-                 if (param.InputSlot.Input.Value is InputValue<float> floatVal)
-                 {
-                     var val = floatVal.Value;
-                     if (ImGui.DragFloat($"##val_{param.Input.Id}", ref val, param.ParameterScale * 0.1f))
-                     {
-                         // Update logic would go here
-                     }
-                 }
-             }
-             else if (param.Type == typeof(Vector2))
-             {
-                 if (param.InputSlot.Input.Value is InputValue<Vector2> vec2Val)
-                 {
-                     var val = vec2Val.Value;
-                     ImGui.DragFloat2($"##val_{param.Input.Id}", ref val, param.ParameterScale * 0.1f);
-                 }
-             }
-              else if (param.Type == typeof(System.Numerics.Vector3))
-             {
-                 if (param.InputSlot.Input.Value is InputValue<System.Numerics.Vector3> vec3Val)
-                 {
-                     var val = vec3Val.Value;
-                     ImGui.DragFloat3($"##val_{param.Input.Id}", ref val, param.ParameterScale * 0.1f);
-                 }
-             }
-              else if (param.Type == typeof(Vector4))
-             {
-                 if (param.InputSlot.Input.Value is InputValue<Vector4> vec4Val)
-                 {
-                     var val = vec4Val.Value;
-                     ImGui.ColorEdit4($"##val_{param.Input.Id}", ref val, ImGuiColorEditFlags.NoInputs);
-                 }
-             }
-             ImGui.PopItemWidth();
-             
-             ImGui.SameLine();
-             ImGui.TextUnformatted($"{param.Input.Name}");
-             
-             ImGui.PopID();
-         }
     }
 
     internal override List<Window> GetInstances()
