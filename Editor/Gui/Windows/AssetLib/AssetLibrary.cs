@@ -76,7 +76,7 @@ internal sealed partial class AssetLibrary : Window
         {
             if (!_state.AssetCache.TryGetValue(aliasedPath, out var asset))
             {
-                if (!ResourceManager.TryResolvePath(aliasedPath, _state.Composition, out var absolutePath, out var package))
+                if (!ResourceManager.TryResolveRelativePath(aliasedPath, _state.Composition, out var absolutePath, out var package))
                 {
                     Log.Warning($"Can't find file {aliasedPath}");
                     continue;
@@ -86,7 +86,7 @@ internal sealed partial class AssetLibrary : Window
 
                 var fileInfo = new FileInfo(absolutePath);
                 var fileInfoExtension = fileInfo.Extension.Length < 1 ? string.Empty : fileInfo.Extension[1..];
-                var fileExtensionId = FileExtensionRegistry.GetId(fileInfoExtension);
+                var fileExtensionId = FileExtensionRegistry.GetUniqueId(fileInfoExtension);
                 if (!AssetTypeRegistry.TryGetFromId(fileExtensionId, out var assetType))
                 {
                     Log.Warning($"Can't find file type for: {fileInfoExtension}");
@@ -129,7 +129,7 @@ internal sealed partial class AssetLibrary : Window
         var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
         package = parts.Length > 0 ? parts[0] : string.Empty;
-        folders = parts.Length > 2
+        folders = parts.Length > 1
                       ? parts[0..^1].ToList()
                       : [];
     }
@@ -153,7 +153,7 @@ internal sealed partial class AssetLibrary : Window
         if (TryGetFileInputFromInstance(instance, out _state.ActivePathInput, out var stringInputUi))
         {
             var filePath = _state.ActivePathInput.GetCurrentValue();
-            ResourceManager.TryResolvePath(filePath, instance, out _state.ActiveAbsolutePath, out _);
+            ResourceManager.TryResolveRelativePath(filePath, instance, out _state.ActiveAbsolutePath, out _);
 
             if (UserSettings.Config.SyncWithOperatorSelection)
             {

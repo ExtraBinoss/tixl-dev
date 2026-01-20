@@ -1,7 +1,6 @@
 ﻿#nullable enable
 using System.IO;
 using System.Text.RegularExpressions;
-using System.Linq; // Added for Any()
 using T3.Core.UserData;
 using T3.Editor.Gui.UiHelpers;
 using T3.Editor.UiModel.ProjectHandling;
@@ -26,18 +25,60 @@ internal static partial class RenderPaths
                    : path;
     }
 
-    public static string GetTargetFilePath(FFMpegRenderSettings.RenderModes mode)
+    public static string GetTargetFilePath(RenderSettings.RenderModes mode)
     {
-        if (mode == FFMpegRenderSettings.RenderModes.Video)
+        var settings = RenderSettings.Current;
+        if (mode == RenderSettings.RenderModes.Video)
         {
-            return ResolveProjectRelativePath(UserSettings.Config.RenderVideoFilePath ?? string.Empty);
+            var targetPath = ResolveProjectRelativePath(UserSettings.Config.RenderVideoFilePath ?? string.Empty);
+            if (settings.AutoIncrementVersionNumber)
+            {
+                if (!IsFilenameIncrementable(targetPath))
+                {
+                    targetPath = GetNextIncrementedPath(targetPath);
+                }
+
+                while (File.Exists(targetPath))
+                {
+                    targetPath = GetNextIncrementedPath(targetPath);
+                }
+            }
+            return targetPath;
         }
 
         var folder = ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath ?? string.Empty);
         var subFolder = UserSettings.Config.RenderSequenceFileName ?? "v01";
         var prefix = UserSettings.Config.RenderSequencePrefix ?? "render";
+        
+        if (settings.AutoIncrementSubFolder)
+        {
+            var targetToIncrement = settings.CreateSubFolder ? subFolder : prefix;
+            if (!IsFilenameIncrementable(targetToIncrement))
+            {
+                targetToIncrement = GetNextIncrementedPath(targetToIncrement);
+            }
 
-        if (FFMpegRenderSettings.Current.CreateSubFolder)
+            while (true)
+            {
+                var checkPath = settings.CreateSubFolder 
+                                    ? Path.Combine(folder, targetToIncrement, prefix) 
+                                    : Path.Combine(folder, targetToIncrement);
+                
+                if (FileExists(checkPath))
+                {
+                    targetToIncrement = GetNextIncrementedPath(targetToIncrement);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            if (settings.CreateSubFolder) subFolder = targetToIncrement;
+            else prefix = targetToIncrement;
+        }
+
+        if (settings.CreateSubFolder)
         {
             return Path.Combine(folder, subFolder, prefix);
         }
@@ -45,66 +86,36 @@ internal static partial class RenderPaths
         return Path.Combine(folder, prefix);
     }
 
-    public static string GetExpectedTargetDisplayPath(FFMpegRenderSettings.RenderModes mode)
+    public static string GetExpectedTargetDisplayPath(RenderSettings.RenderModes mode)
     {
         var targetPath = GetTargetFilePath(mode);
-        var settings = FFMpegRenderSettings.Current;
+        var settings = RenderSettings.Current;
 
-        if (mode == FFMpegRenderSettings.RenderModes.Video)
+        if (mode == RenderSettings.RenderModes.Video)
         {
-            if (settings.AutoIncrementVideo)
-            {
-                var testPath = targetPath;
-                if (!IsFilenameIncrementable(testPath))
-                {
-                    testPath = GetNextIncrementedPath(testPath);
-                }
-
-                while (File.Exists(testPath))
-                {
-                    testPath = GetNextIncrementedPath(testPath);
-                }
-                return testPath;
-            }
             return targetPath;
         }
 
-        // Image sequence
-        var subFolder = UserSettings.Config.RenderSequenceFileName ?? "v01";
-        var prefix = UserSettings.Config.RenderSequencePrefix ?? "render";
-        
-        if (settings.AutoIncrementSubFolder)
-        {
-            var folder = ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath ?? string.Empty);
-            
-            if (settings.CreateSubFolder)
-            {
-                var nextFolderPath = GetNextVersionForFolder(folder, subFolder);
-                subFolder = Path.GetFileName(nextFolderPath);
-            }
-
-        }
-
-        var baseFolder = ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath ?? string.Empty);
-        var finalBase = settings.CreateSubFolder ? Path.Combine(baseFolder, subFolder, prefix) : Path.Combine(baseFolder, prefix);
-        
-        return $"{finalBase}_%04d.{settings.FileFormat.ToString().ToLower()}";
+        // Image sequence path
+        var frameCount = RenderTiming.ComputeFrameCount(settings);
+        var frameRange = frameCount <= 1 ? "0000" : $"0000..{(frameCount - 1):D4}";
+        return $"{targetPath}_{frameRange}.{settings.FileFormat.ToString().ToLower()}";
     }
 
-    public static bool FileExists(string targetPath, FFMpegRenderSettings.RenderModes mode)
+    public static bool FileExists(string targetPath)
     {
-        if (mode == FFMpegRenderSettings.RenderModes.Video)
+        if (RenderSettings.Current.RenderMode == RenderSettings.RenderModes.Video)
         {
             return File.Exists(targetPath);
         }
 
         // For image sequences, check if the first frame or the folder exists
-        if (FFMpegRenderSettings.Current.CreateSubFolder)
+        if (RenderSettings.Current.CreateSubFolder)
         {
             var directory = Path.GetDirectoryName(targetPath);
-            
             if (directory != null && Directory.Exists(directory))
             {
+                // If the directory exists, check if it contains any files or subdirectories
                 try
                 {
                     return Directory.EnumerateFileSystemEntries(directory).Any();
@@ -114,11 +125,10 @@ internal static partial class RenderPaths
                     return true; // Assume exists if we can't access
                 }
             }
-            return false;
         }
 
-        var firstFrame = $"{targetPath}0000.{FFMpegRenderSettings.Current.FileFormat.ToString().ToLower()}";
-        return File.Exists(firstFrame) || File.Exists(firstFrame.Replace("0000", "0001"));
+        var firstFrame = $"{targetPath}_0000.{RenderSettings.Current.FileFormat.ToString().ToLower()}";
+        return File.Exists(firstFrame);
     }
 
     public static bool ValidateOrCreateTargetFolder(string targetFile)
@@ -160,45 +170,63 @@ internal static partial class RenderPaths
 
     public static void TryIncrementVideoFileNameInUserSettings()
     {
-        if (FFMpegRenderSettings.Current.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence)
-        {
-             // Increment sequence settings
-             var sub = UserSettings.Config.RenderSequenceFileName;
-             if (IsFilenameIncrementable(sub))
-             {
-                 UserSettings.Config.RenderSequenceFileName = GetNextIncrementedPath(sub!);
-             }
-             UserSettings.Save();
-             return;
-        }
-    
-        var filename = Path.GetFileName(UserSettings.Config.RenderVideoFilePath);
-        if (string.IsNullOrEmpty(filename))
+        var path = UserSettings.Config.RenderVideoFilePath;
+        if (string.IsNullOrEmpty(path) || !IsFilenameIncrementable(path))
             return;
 
-        if (IsFilenameIncrementable(filename))
+        UserSettings.Config.RenderVideoFilePath = GetNextIncrementedPath(path);
+        UserSettings.Save();
+    }
+
+    public static string GetVersionString(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return string.Empty;
+
+        var name = Path.GetFileName(path);
+        if (string.IsNullOrEmpty(name)) 
+            return string.Empty;
+        
+        var match = FileVersionPatternRegex().Match(name);
+        if (match.Success)
         {
-            var newFilename = GetNextIncrementedPath(filename);
-            var directoryName = Path.GetDirectoryName(UserSettings.Config.RenderVideoFilePath);
-            UserSettings.Config.RenderVideoFilePath = directoryName == null
-                                                        ? newFilename
-                                                        : Path.Combine(directoryName, newFilename);
-            UserSettings.Save();
+            return "v" + match.Groups[1].Value;
         }
+
+        return string.Empty;
+    }
+
+    public static string GetNextVersionString(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return "v01";
+
+        var filename = Path.GetFileName(path);
+        var match = FileVersionPatternRegex().Match(filename);
+        if (match.Success)
+        {
+            var versionGroup = match.Groups[1];
+            if (int.TryParse(versionGroup.Value, out var versionNumber))
+            {
+                var digits = Math.Clamp(versionGroup.Value.Length, 2, 4);
+                return "v" + (versionNumber + 1).ToString("D" + digits);
+            }
+        }
+
+        return "v01";
     }
 
     public static string GetNextIncrementedPath(string path)
     {
         if (string.IsNullOrEmpty(path))
-            return "output_v01"; // Fallback to v01 if empty
+            return "output";
 
         var filename = Path.GetFileName(path);
-        // If path is just filename, DirectoryName is null/empty.
         var directory = Path.GetDirectoryName(path);
         string newFilename;
 
-        var matches = _matchFileVersionPattern.Matches(filename);
-        if (matches.Count == 0)
+        var match = _matchFileVersionPattern.Match(filename);
+        if (!match.Success)
         {
             var extension = Path.GetExtension(filename);
             var nameWithoutExtension = Path.GetFileNameWithoutExtension(filename);
@@ -206,8 +234,7 @@ internal static partial class RenderPaths
         }
         else
         {
-            var lastMatch = matches[^1]; // Use last version token found
-            var versionGroup = lastMatch.Groups[1];
+            var versionGroup = match.Groups[1];
             var versionString = versionGroup.Value;
             
             if (!int.TryParse(versionString, out var versionNumber))
@@ -221,60 +248,15 @@ internal static partial class RenderPaths
                 var digits = Math.Clamp(versionString.Length, 2, 4);
                 var newVersionNumberString = (versionNumber + 1).ToString("D" + digits);
                 
+                // Replace only the version number part within the matched group
                 newFilename = filename.Remove(versionGroup.Index, versionGroup.Length)
                                       .Insert(versionGroup.Index, newVersionNumberString);
             }
         }
-        
-        if (string.IsNullOrEmpty(directory)) return newFilename;
-        return Path.Combine(directory, newFilename);
+
+        return directory == null ? newFilename : Path.Combine(directory, newFilename);
     }
 
-    [GeneratedRegex(@"(?<=^|[\s_\-.a-zA-Z])v(\d{2,4})(?=\b|$)")]
+    [GeneratedRegex(@"(?:^|[\s_\-.])v(\d{2,4})(?=$|[\s_\-.])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex FileVersionPatternRegex();
-
-    public static string GetNextVersionForFolder(string mainFolder, string subFolder)
-    {
-        var match = _matchFileVersionPattern.Match(subFolder);
-        
-        if (!match.Success)
-        {
-            // No version found, append _v01
-            var newSub = subFolder + "_v01";
-            var path = Path.Combine(mainFolder, newSub);
-            return Directory.Exists(path) 
-                ? GetNextVersionForFolder(mainFolder, newSub) 
-                : path;
-        }
-
-        var versionGroup = match.Groups[1];
-        var versionString = versionGroup.Value;
-        
-        if (!int.TryParse(versionString, out var versionNumber))
-            return Path.Combine(mainFolder, subFolder);
-
-        var digits = Math.Clamp(versionString.Length, 2, 4);
-        
-        // Find the next free version by incrementing
-        for (int i = 0; i < 1000; i++)
-        {
-            var fullPath = Path.Combine(mainFolder, subFolder);
-            if (!Directory.Exists(fullPath))
-                return fullPath;
-
-            versionNumber++;
-            var newVersionNumberString = versionNumber.ToString("D" + digits);
-            
-            // Safe replacement: only replace the digits, not the 'v' or any prefix
-            subFolder = subFolder.Remove(versionGroup.Index, versionGroup.Length)
-                                 .Insert(versionGroup.Index, newVersionNumberString);
-            
-            // Re-match for the next iteration since indices may have shifted
-            match = _matchFileVersionPattern.Match(subFolder);
-            if (match.Success)
-                versionGroup = match.Groups[1];
-        }
-        
-        return Path.Combine(mainFolder, subFolder);
-    }
 }

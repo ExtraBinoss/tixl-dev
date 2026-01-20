@@ -718,7 +718,7 @@ internal static class FormInputs
         DrawInputLabel(label);
 
         var isFilePickerVisible = showFilePicker != FileOperations.FilePickerTypes.None;
-        float spaceForFilePicker = isFilePickerVisible ? 40 : 0;
+        float spaceForFilePicker = isFilePickerVisible ? 80 * T3Ui.UiScaleFactor : 0;
         var inputSize = GetAvailableInputSize(null, false, true, spaceForFilePicker);
         ImGui.SetNextItemWidth(inputSize.X);
 
@@ -742,7 +742,9 @@ internal static class FormInputs
 
         if (isFilePickerVisible)
         {
+            ImGui.PushID(label);
             modified |= FileOperations.DrawFileSelector(showFilePicker, ref value);
+            ImGui.PopID();
         }
 
         AppendTooltip(tooltip);
@@ -1002,7 +1004,7 @@ internal static class FormInputs
     #endregion
 
     #region internal helpers
-    private static Vector2 GetAvailableInputSize(string? tooltip, bool hasReset, bool fillWidth = false, float rightPadding = 0)
+    public static Vector2 GetAvailableInputSize(string? tooltip, bool hasReset, bool fillWidth = false, float rightPadding = 0)
     {
         var toolWidth = 20f * T3Ui.UiScaleFactor;
         var sizeForResetToDefault = hasReset ? toolWidth : 0;
