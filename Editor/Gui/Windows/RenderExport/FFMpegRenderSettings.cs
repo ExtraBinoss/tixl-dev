@@ -21,7 +21,7 @@ internal sealed class FFMpegRenderSettings
     public int OverrideMotionBlurSamples;
 
 
-    public RenderModes RenderMode = RenderModes.Video;
+    public RenderSettings.RenderModes RenderMode = RenderSettings.RenderModes.Video;
     public int Bitrate = 25_000_000;
     public bool ExportAudio = true;
     
@@ -32,9 +32,9 @@ internal sealed class FFMpegRenderSettings
     
     public bool IsAutoIncrementing => RenderMode switch
                                       {
-                                          RenderModes.Video         => AutoIncrementVideo,
-                                          RenderModes.ImageSequence => AutoIncrementSubFolder,
-                                          _                         => false
+                                          RenderSettings.RenderModes.Video         => AutoIncrementVideo,
+                                          RenderSettings.RenderModes.ImageSequence => AutoIncrementSubFolder,
+                                          _                                        => false
                                       };
 
     public TimeRanges TimeRange = TimeRanges.Custom;
@@ -44,11 +44,6 @@ internal sealed class FFMpegRenderSettings
     public int WebpQuality = 75;
     public int WebpCompressionLevel = 0;
 
-    internal enum RenderModes
-    {
-        Video,
-        ImageSequence,
-    }
     
     public enum ImageFileFormats
     {

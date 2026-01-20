@@ -149,7 +149,7 @@ internal static class FFMpegRenderProcess
         var targetFilePath = RenderPaths.GetTargetFilePath(renderSettings.RenderMode);
         
         // Ensure directory exists for Image Sequence (in case it wasn't created by overwrite check or new folder)
-        if (renderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence)
+        if (renderSettings.RenderMode == RenderSettings.RenderModes.ImageSequence)
         {
              // Resolve paths
              var mainFolder = RenderPaths.ResolveProjectRelativePath(UserSettings.Config.RenderSequenceFilePath);
@@ -236,7 +236,7 @@ internal static class FFMpegRenderProcess
         var sampleRate = 48000;
         
         // Only get audio info if exporting audio and NOT image sequence
-        var exportAudio = renderSettings.ExportAudio && renderSettings.RenderMode != FFMpegRenderSettings.RenderModes.ImageSequence;
+        var exportAudio = renderSettings.ExportAudio && renderSettings.RenderMode != RenderSettings.RenderModes.ImageSequence;
         if (exportAudio)
         {
             channels = RenderAudioInfo.SoundtrackChannels();
@@ -252,7 +252,7 @@ internal static class FFMpegRenderProcess
                                Preset = renderSettings.Preset,
                                WebpQuality = renderSettings.WebpQuality,
                                WebpCompressionLevel = renderSettings.WebpCompressionLevel,
-                               IsImageSequence = renderSettings.RenderMode == FFMpegRenderSettings.RenderModes.ImageSequence,
+                               IsImageSequence = renderSettings.RenderMode == RenderSettings.RenderModes.ImageSequence,
                                ImageFormat = renderSettings.FileFormat
                            };
                            

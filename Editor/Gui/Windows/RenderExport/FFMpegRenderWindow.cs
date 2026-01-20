@@ -65,7 +65,7 @@ internal sealed class FFMpegRenderWindow : Window
         FormInputs.SetIndentToParameters();
         FormInputs.AddSegmentedButtonWithLabel(ref FFMpegRenderSettings.RenderMode, "Output");
 
-        if (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.Video)
+        if (FFMpegRenderSettings.RenderMode == RenderSettings.RenderModes.Video)
             DrawVideoSettings();
         else
             DrawImageSequenceSettings();
@@ -314,8 +314,8 @@ internal sealed class FFMpegRenderWindow : Window
         
         var startLabel = (FFMpegRenderSettings.RenderMode, FFMpegRenderSettings.IsAutoIncrementing) switch
                          {
-                             (FFMpegRenderSettings.RenderModes.Video, true)         => FFMpegRenderUiStrings.RenderVideoAutoLabel,
-                             (FFMpegRenderSettings.RenderModes.ImageSequence, true) => FFMpegRenderUiStrings.RenderSequenceAutoLabel,
+                             (RenderSettings.RenderModes.Video, true)         => FFMpegRenderUiStrings.RenderVideoAutoLabel,
+                             (RenderSettings.RenderModes.ImageSequence, true) => FFMpegRenderUiStrings.RenderSequenceAutoLabel,
                              _                                                      => FFMpegRenderUiStrings.StartRenderLabel
                          };
 
@@ -361,7 +361,7 @@ internal sealed class FFMpegRenderWindow : Window
         var size = FFMpegRenderProcess.MainOutputRenderedSize;
         
         string format;
-        if (FFMpegRenderSettings.RenderMode == FFMpegRenderSettings.RenderModes.Video)
+        if (FFMpegRenderSettings.RenderMode == RenderSettings.RenderModes.Video)
         {
              format = $"{FFMpegRenderSettings.Codec.ToString().ToUpper()} Video";
         }
