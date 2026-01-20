@@ -144,6 +144,13 @@ internal sealed class FFMpegRenderWindow : Window
         FormInputs.AddFloat("FPS", ref FFMpegRenderSettings.Fps, 0);
         if (FFMpegRenderSettings.Fps < 0) FFMpegRenderSettings.Fps = -FFMpegRenderSettings.Fps;
 
+        // Resolution row
+        FormInputs.DrawInputLabel(FFMpegRenderUiStrings.ResolutionLabel);
+        var resSize = FormInputs.GetAvailableInputSize(null, false, true);
+        DrawResolutionPopoverCompact(resSize.X);
+        
+        FormInputs.AddVerticalSpace(10);
+
         // Handle FPS change rescaling
         if (FFMpegRenderSettings.Fps != 0 && Math.Abs(_lastValidFps - FFMpegRenderSettings.Fps) > float.Epsilon)
         {
@@ -251,6 +258,56 @@ internal sealed class FFMpegRenderWindow : Window
     private static string GetCachedTargetFilePath()
     {
          return RenderPaths.GetExpectedTargetDisplayPath(FFMpegRenderSettings.RenderMode);
+    }
+
+    private static void DrawResolutionPopoverCompact(float width)
+    {
+        var currentPct = (int)(FFMpegRenderSettings.ResolutionFactor * 100);
+        ImGui.SetNextItemWidth(width);
+        
+        if (ImGui.Button($"{currentPct}%##Res", new System.Numerics.Vector2(width, 0)))
+        {
+            ImGui.OpenPopup("ResolutionPopover");
+        }
+        CustomComponents.TooltipForLastItem(FFMpegRenderUiStrings.ResolutionTooltip);
+
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new System.Numerics.Vector2(12, 12));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new System.Numerics.Vector2(8, 8));
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(160 * T3Ui.UiScaleFactor, 0));
+        
+        if (ImGui.BeginPopup("ResolutionPopover", ImGuiWindowFlags.NoMove))
+        {
+            static void DrawSelectable(string label, float factor)
+            {
+                bool isSelected = Math.Abs(FFMpegRenderSettings.ResolutionFactor - factor) < 0.001f;
+                if (ImGui.Selectable(label, isSelected))
+                {
+                    FFMpegRenderSettings.ResolutionFactor = factor;
+                }
+            }
+
+            DrawSelectable("25%", 0.25f);
+            DrawSelectable("50%", 0.5f);
+            DrawSelectable("100%", 1.0f);
+            DrawSelectable("200%", 2.0f);
+
+            CustomComponents.SeparatorLine();
+            
+            ImGui.PushStyleColor(ImGuiCol.Text, UiColors.TextMuted.Rgba);
+            ImGui.TextUnformatted(FFMpegRenderUiStrings.CustomResolutionLabel);
+            ImGui.PopStyleColor();
+            
+            var customPct = FFMpegRenderSettings.ResolutionFactor * 100f;
+            ImGui.SetNextItemWidth(100 * T3Ui.UiScaleFactor);
+            if (ImGui.InputFloat("##CustomRes", ref customPct, 0, 0, "%.0f%%"))
+            {
+                customPct = Math.Clamp(customPct, 1f, 1000f);
+                FFMpegRenderSettings.ResolutionFactor = customPct / 100f;
+            }
+            
+            ImGui.EndPopup();
+        }
+        ImGui.PopStyleVar(2);
     }
 
     private void DrawRenderingControls()
@@ -536,5 +593,10 @@ internal sealed class FFMpegRenderWindow : Window
         public const string StartRenderLabel = "Start FFMpeg Render";
         public const string RenderVideoAutoLabel = "Render Video (Auto-Increment)";
         public const string RenderSequenceAutoLabel = "Render Sequence (Auto-Increment)";
+
+        
+        public const string ResolutionLabel = "Resolution";
+        public const string CustomResolutionLabel = "Custom:";
+        public const string ResolutionTooltip = "Scale resolution of rendered frames.";
     }
 }

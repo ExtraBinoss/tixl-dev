@@ -39,6 +39,7 @@ internal class FFMpegVideoWriter : IDisposable
     public FFMpegRenderSettings.ImageFileFormats ImageFormat { get; set; }
 
     private readonly Int2 _videoPixelSize;
+    private readonly Int2 _outputVideoSize;
     private Task? _ffmpegTask;
     private bool _isWriting;
     private bool _isDisposed;
@@ -51,10 +52,11 @@ internal class FFMpegVideoWriter : IDisposable
     private FileStream? _audioFileStream;
     private readonly Lock _audioLock = new();
 
-    public FFMpegVideoWriter(string filePath, Int2 videoPixelSize, bool exportAudio, int audioSampleRate = 48000, int audioChannels = 2)
+    public FFMpegVideoWriter(string filePath, Int2 videoPixelSize, Int2 outputVideoSize, bool exportAudio, int audioSampleRate = 48000, int audioChannels = 2)
     {
         FilePath = filePath;
         _videoPixelSize = videoPixelSize;
+        _outputVideoSize = outputVideoSize;
         ExportAudio = exportAudio;
         _audioSampleRate = audioSampleRate;
         _audioChannels = audioChannels;
@@ -148,6 +150,12 @@ internal class FFMpegVideoWriter : IDisposable
                                 break;
                                 // Add others if needed
                         }
+                        
+                        // Apply scaling for image sequence
+                        if (_outputVideoSize != _videoPixelSize)
+                        {
+                            options.WithCustomArgument($"-vf scale={_outputVideoSize.Width}:{_outputVideoSize.Height}");
+                        }
                     }
                     else
                     {
@@ -159,7 +167,7 @@ internal class FFMpegVideoWriter : IDisposable
                                        .WithSpeedPreset(Preset)
                                        .WithVideoBitrate((int)(Bitrate / 1000))
                                        .ForcePixelFormat("yuv420p") // H.264 standard
-                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
+                                       .WithCustomArgument($"-vf scale={_outputVideoSize.Width}:{_outputVideoSize.Height}");
                                 if (Crf >= 0) options.WithConstantRateFactor(Crf);
                                 options.ForceFormat("mp4");
                                 break;
@@ -167,26 +175,27 @@ internal class FFMpegVideoWriter : IDisposable
                                 options.WithVideoCodec("prores_ks")
                                        .WithVideoBitrate((int)(Bitrate / 1000))
                                        .ForcePixelFormat("yuv422p10le")
-                                       .ForceFormat("mov");
+                                       .ForceFormat("mov")
+                                       .WithCustomArgument($"-vf scale={_outputVideoSize.Width}:{_outputVideoSize.Height}");
                                 break;
                             case FFMpegRenderSettings.SelectedCodec.Hap:
                                 options.WithVideoCodec("hap")
                                        .ForceFormat("mov")
                                        .ForcePixelFormat("rgba")
-                                       .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
+                                       .WithCustomArgument($"-vf scale={_outputVideoSize.Width}:{_outputVideoSize.Height}");
                                 break;
                             case FFMpegRenderSettings.SelectedCodec.HapAlpha:
                                 options.WithVideoCodec("hap")
                                        .WithCustomArgument("-format hap_alpha")
                                        .ForceFormat("mov")
                                        .ForcePixelFormat("rgba")
-                                       .WithCustomArgument("-vf scale=trunc(iw/4)*4:trunc(ih/4)*4");
+                                       .WithCustomArgument($"-vf scale={_outputVideoSize.Width}:{_outputVideoSize.Height}");
                                 break;
                             case FFMpegRenderSettings.SelectedCodec.Vp9:
                                 options.WithVideoCodec("libvpx-vp9")
                                        .WithVideoBitrate((int)(Bitrate / 1000))
                                        .ForcePixelFormat("yuv420p")
-                                       .WithCustomArgument("-vf scale=trunc(iw/2)*2:trunc(ih/2)*2");
+                                       .WithCustomArgument($"-vf scale={_outputVideoSize.Width}:{_outputVideoSize.Height}");
                                 if (Crf >= 0) options.WithConstantRateFactor(Crf);
                                 options.ForceFormat("webm");
                                 break;

@@ -82,8 +82,14 @@ internal static class FFMpegRenderProcess
             MainOutputOriginalSize.Width = desc.Width;
             MainOutputOriginalSize.Height = desc.Height;
 
-            MainOutputRenderedSize = new Int2(((int)(desc.Width * FFMpegRenderSettings.Current.ResolutionFactor)).Clamp(1,16384),
-                                              ((int)(desc.Height * FFMpegRenderSettings.Current.ResolutionFactor)).Clamp(1,16384));
+            var width = (int)(desc.Width * FFMpegRenderSettings.Current.ResolutionFactor);
+            var height = (int)(desc.Height * FFMpegRenderSettings.Current.ResolutionFactor);
+            
+            // Ensure even dimensions for video codecs
+            width = (width / 2 * 2).Clamp(2, 16384);
+            height = (height / 2 * 2).Clamp(2, 16384);
+            
+            MainOutputRenderedSize = new Int2(width, height);
             
             State = States.WaitingForExport;
             return;
@@ -243,7 +249,7 @@ internal static class FFMpegRenderProcess
             sampleRate = RenderAudioInfo.SoundtrackSampleRate();
         }
 
-        _videoWriter = new FFMpegVideoWriter(targetFilePath, MainOutputOriginalSize, exportAudio, sampleRate, channels)
+        _videoWriter = new FFMpegVideoWriter(targetFilePath, MainOutputOriginalSize, MainOutputRenderedSize, exportAudio, sampleRate, channels)
                            {
                                Bitrate = renderSettings.Bitrate,
                                Framerate = renderSettings.Fps,
